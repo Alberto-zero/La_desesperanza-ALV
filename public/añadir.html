@@ -41,10 +41,11 @@
         </div>
 
         <div class="mb-3">
-            <label class="form-label">Imagen del Producto</label>
-            <input type="text" class="form-control" id="imagenProducto" placeholder="Inserte la URL de la imagen" required>
+            <label class="form-label">Imagen del Producto (jpeg,png,webp,gift)</label>
+            <input type="file" class="form-control" id="imagenProducto" placeholder="Inserte la URL de la imagen" required>
         </div>
-        <botton type="submit" class="btn btn-primary">Añadir Producto</button>
+        <button onclick="validarProducto()" type="submit" class="btn btn-primary">Añadir Producto</button>
+        <script src="app.js"></script>
     </form>
 </body>
 </html>
