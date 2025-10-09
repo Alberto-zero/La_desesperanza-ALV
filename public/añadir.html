@@ -20,32 +20,32 @@
         </div>
     </header>
 
-    <form class="container my-4" id="addProducto">
+    <form class="container my-4" action="/addProducto" method="post" enctype="multipart/form-data">
         <div class="mb-3">
             <label class="form-label">Nombre del Producto</label>
-            <input type="text" class="form-control" id="nombreProducto" placeholder="Inserte el nombre" required>
+            <input type="text" class="form-control" name="nombreProducto" placeholder="Inserte el nombre" required>
         </div>
         <div>
             <label class="form-label">Descripción del Producto</label>
-            <input type="text" class="form-control" id="descripcionProducto" placeholder="Inserte una breve explicacion del producto" required>
+            <input type="text" class="form-control" name="descripcionProducto" placeholder="Inserte una breve explicacion del producto" required>
         </div>
 
         <div class="mb-3">
             <label class="form-label">Precio</label>
-            <input type="number" class="form-control" id="precioProducto"  placeholder="Inserte el precio en MXN" required>
+            <input type="number" class="form-control" name="precioProducto"  placeholder="Inserte el precio en MXN" required>
         </div>
 
         <div class="mb-3">
             <label class="form-label">Cantidad</label>
-            <input type="number" class="form-control" id="cantidadProducto" placeholder="Inserte la cantidad disponible" required>
+            <input type="number" class="form-control" name="cantidadProducto" placeholder="Inserte la cantidad disponible" required>
         </div>
 
         <div class="mb-3">
             <label class="form-label">Imagen del Producto (jpeg,png,webp,gift)</label>
-            <input type="file" class="form-control" id="imagenProducto" placeholder="Inserte la URL de la imagen" required>
+            <input type="file" accept="image/*" class="form-control" name="imagenProducto" placeholder="Inserte la URL de la imagen" required>
         </div>
-        <button onclick="validarProducto()" type="submit" class="btn btn-primary">Añadir Producto</button>
-        <script src="app.js"></script>
+        <input  type="submit" class="btn btn-primary" value="Añadir producto"></input>
     </form>
+    <script src="app.js"></script>
 </body>
 </html>

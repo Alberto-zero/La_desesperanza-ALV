@@ -1,58 +1,85 @@
-function validarProducto() {
-    const nombre = document.getElementById('nombreProducto').value;
-    const descripcion = document.getElementById('descripcionProducto').value;
-    const precio = document.getElementById('precioProducto').value;
-    const cantidad = document.getElementById('cantidadProducto').value;
-    const imagen = document.getElementById('imagenProducto').files[0];
+//conexion mysql
+const mysql = require('mysql2');
+const express = require('express');
+const bodyParser = require('body-parser');
+const multer = require("multer");
+const upload = multer({ storage: multer.memoryStorage() });
+const app = express();
+var con= mysql.createConnection({
+    host: "localhost",
+    user: "root",
+    password: "n0m3l0",
+    database: "esperanza"
+});
 
+
+
+con.connect(function(err) {
+    if (err) throw err;
+    console.log("Conectado a la base de datos MySQL!");
+}
+);
+
+app.use(bodyParser.urlencoded());
+app.use(bodyParser.json());
+app.use(express.static('public'));
+
+app.listen(3000, function() {
+    console.log("Servidor iniciado en el puerto 3000");
+});
+
+app.post('/addProducto',upload.single("imagenProducto"), function(req, res) {
+    const nombre = req.body.nombreProducto;
+    const descripcion = req.body.descripcionProducto;
+    const precio = req.body.precioProducto;
+    const cantidad = req.body.cantidadProducto;
+
+    if (!req.file) return res.status(400).send("Debes subir una imagen.");
+    const imagen = req.file.buffer;
+
+    //validaciones
     const validarCaracteresNombre = /^[A-Za-z\s]{3,44}$/;
     const validarCaracteresDescripcion = /^[A-Za-z0-9\s.,'-]{10,100}$/;
     const validarInsercion=/<[^>]*>/;
     const validarImagen=["image/jpeg", "image/png", "image/gif", "image/webp"];
 
-    if (!nombre || !descripcion || !precio || !cantidad || !imagen) {
-        alert('Por favor, complete todos los campos.');
-        return false;
+    if (isNaN(precio) || precio <= 0 ) {
+        return res.status(400).send('El precio debe ser un precio válido.');
     }
-    
-    if (isNaN(precio) &&  precio<= 0 ) {
-        alert('El precio debe ser un precio válido.');
-        return false;
+    if (isNaN(cantidad) || cantidad <= 0 || !Number.isInteger(Number(cantidad))) {
+        return res.status(400).send('La cantidad debe ser una cantidad valida.');
     }
-
-    if (isNaN(cantidad)&& cantidad <= 0) {
-        alert('La cantidad debe ser una cantidad valida.');
-        return false;
-    }
-
     if(!isNaN(nombre)){
-        alert('El nombre no puede ser un número.');
-        return false;
+        return res.status(400).send('El nombre no puede ser un número.');
     }
     if(!isNaN(descripcion)){
-        alert('La descripcion no puede ser un número.');
-        return false;
+        return res.status(400).send('La descripcion no puede ser un número.');
     }
 
-    if (!validarCaracteresNombre.test(nombre)) {
-        alert('El nombre debe tener entre 3 y 44 caracteres y no puede contener números o caracteres especiales.');
-        return false;
+    if (!validarCaracteresNombre.test(nombre)) {     
+        return res.status(400).send('El nombre debe tener entre 3 y 44 caracteres y no puede contener números o caracteres especiales.');
     }
 
     if (!validarCaracteresDescripcion.test(descripcion)) {
-        alert('La descripción debe tener entre 10 y 100 caracteres y no puede contener caracteres especiales.');
-        return false;
+        return res.status(400).send('La descripción debe tener entre 10 y 100 caracteres y no puede contener caracteres especiales.');
     }
 
     if (validarInsercion.test(nombre) || validarInsercion.test(descripcion)) {
-        alert('No se permiten etiquetas HTML en el nombre o la descripción.');
-        return false;
+        return res.status(400).send('No se permiten etiquetas HTML en el nombre o la descripción.') ;
     }
 
-    if (!validarImagen.includes(imagen.type)) {
-        alert('El formato de la imagen no es válido. Solo se permiten jpeg, png, gif y webp.');
-        return false;
+    if (!validarImagen.includes(req.file.mimetype)) {
+        return res.status(400).send('El formato de la imagen no es válido. Solo se permiten jpeg, png, gif y webp.');
     }
-    return true;
-    alert('Producto añadido correctamente.');
-}
+
+    con.query(
+        'INSERT INTO producto (nombre, precio, stock, descripcion, imagen) VALUES (?, ?, ?, ?, ?)', 
+        [nombre, precio, cantidad, descripcion, imagen],
+        function (err, result) {
+            if (err) {
+                console.error('Error al insertar el producto en la base de datos: ', err);
+                return res.status(500).send('Error al insertar el producto en la base de datos.');
+            }
+            res.status(200).send('Producto añadido correctamente.');
+        });
+});
