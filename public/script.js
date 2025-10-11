@@ -28,10 +28,8 @@ function cargarProductos() {
                     <h2>${producto.nombre}</h2>
                     <p>${producto.descripcion}</p>
                     <p class="fs-4 fw-bold">$${producto.precio}</p>
-                    <p>Stock: ${producto.stock}</p>
-                    <button class="btn btn-primary">Agregar al carrito</button>
-                    <button class="btn btn-warning">Editar</button>
-                    <button class="btn btn-danger">Eliminar</button>
+                    <p>Stock: ${producto.stock}</p><button class="btn btn-primary">Agregar al carrito</button>
+                    
                 </div>
                 </section>
             `;
