@@ -21,8 +21,8 @@ function cargarProductos() {
         
         catalogo.innerHTML += `
                 <section class="row mb-4">
-                <div class="col-md-6">
-                    <img src="${producto.imagen || 'images/default.jpg'}" class="img-fluid rounded" alt="${producto.nombre}">
+                <div class="col-md-3" align-items-center" >
+                    <img src="${producto.imagen || 'images/default.jpg'}" class="img-fluid rounded" alt="${producto.nombre}"  style="max-width: 150px; height: auto;">
                 </div>
                 <div class="col-md-6">
                     <h2>${producto.nombre}</h2>
