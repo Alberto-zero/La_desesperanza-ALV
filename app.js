@@ -83,3 +83,24 @@ app.post('/addProducto',upload.single("imagenProducto"), function(req, res) {
             res.status(200).send('Producto añadido correctamente.');
         });
 });
+
+
+
+app.get('/getProductos', function(req, res) {
+    con.query('SELECT * FROM producto', function (err, result) {
+        if (err) {
+            console.error('Error al obtener los productos de la base de datos: ', err);
+            return res.status(500).send('Error al obtener los productos de la base de datos.');
+        }
+        
+
+        result.forEach(producto => {
+            if (producto.imagen) {
+                producto.imagen = 'data:image/jpeg;base64,' + producto.imagen.toString('base64');
+            }
+
+        });
+        res.json(result);
+    });
+});
+
