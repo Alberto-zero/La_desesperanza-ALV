@@ -1,5 +1,7 @@
-document.addEventListener('DOMContentLoaded', cargarProductos);
-
+document.addEventListener('DOMContentLoaded', () => {
+    cargarProductos();
+    mostrarCatalogo();
+});
 function cargarProductos() {
 
     console.log("Cargando productos...");
@@ -37,5 +39,74 @@ function cargarProductos() {
     }).catch(err => {
             console.error(err);
             document.getElementById('catalogo').innerHTML = '<p class="text-danger">Error al cargar productos.</p>';
+    });
+}
+
+function mostrarCatalogo() {
+    fetch('/getProductos')
+    .then(res => {
+            if (!res.ok) throw new Error('Error al obtener productos');
+            return res.json();
+        })
+    .then(productos => {
+        const tbody = document.querySelector('#tablaProductos tbody');
+        tbody.innerHTML = '';
+        productos.forEach((producto) => {
+        tbody.innerHTML += `
+            <tr>
+            <td>${producto.id_producto}</td>
+            <td><img src="${producto.imagen}" alt="pan" class="img-thumbnail" style="width:60px;height:60px;object-fit:cover;"></td>
+            <td>${producto.nombre}</td>
+            <td>${producto.descripcion || ''}</td>
+            <td>$${producto.precio}</td>
+            <td>${producto.stock}</td>
+            <td>
+                <button class="btn btn-sm btn-primary btn-editar" data-prod="${producto.id_producto}">Editar</button>
+                <button class="btn btn-sm btn-danger btn-eliminar" data-prod="${producto.id_producto}">Eliminar</button>
+            </td>
+            </tr>
+        `;
+        });
+        document.querySelectorAll('.btn-editar').forEach(btn => {
+            btn.addEventListener('click', function() {
+                editarProducto(this.getAttribute('data-prod'));
+            });
+        });
+        document.querySelectorAll('.btn-eliminar').forEach(btn => {
+            btn.addEventListener('click', function() {
+                borrarProducto(this.getAttribute('data-prod'));
+            });
+        });
+    }).catch(err => {
+        console.error(err);
+        document.getElementById('tablaProductos').innerHTML = '<p class="text-danger">Error al cargar productos.</p>';
+    });
+}
+
+function borrarProducto(id) {
+    if (!confirm('¿Seguro que deseas borrar este pan?')) return;
+
+    fetch('/deleteProducto', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_producto: parseInt(id) })
+    })
+    .then(response => {
+        console.log('Respuesta del servidor:', response.status);
+        return response.json();
+    })
+    .then(data => {
+        console.log('Datos recibidos:', data);
+        if (data.error) {
+            alert(data.error);
+        } else {
+            alert(data.message);
+            mostrarCatalogo();
+            cargarProductos();
+        }
+    })
+    .catch(err => {
+        console.error('Error al eliminar el producto:', err);
+        alert('Error al eliminar el producto.');
     });
 }
