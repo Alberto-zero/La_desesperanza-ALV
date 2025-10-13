@@ -122,7 +122,7 @@ app.post('/deleteProducto', function(req, res) {
 });
 
 app.post('/updateProducto', upload.single("imagenProducto"), function(req, res) {
-    const id_producto = req.body.id_producto;
+    const id_producto = req.body.idProducto;
     const nombre = req.body.nombreProducto;
     const descripcion = req.body.descripcionProducto;
     const precio = req.body.precioProducto;

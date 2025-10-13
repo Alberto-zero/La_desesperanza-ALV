@@ -20,10 +20,11 @@
         </div>
     </header>
 
-    <form class="container my-4" action="/addProducto" method="post" enctype="multipart/form-data">
+    <form class="container my-4" action="/updateProducto" method="post" enctype="multipart/form-data">
+        <input type="hidden" id="idProducto" name="idProducto" value="">
         <div class="mb-3">
             <label class="form-label">Nombre del Producto</label>
-            <input type="text" class="form-control" name="nombreProducto" placeholder="Inserte el nombre" required>
+            <input type="text" class="form-control" name="nombreProducto" placeholder="Inserte el nuevo nombre" required>
         </div>
         <div>
             <label class="form-label">Descripción del Producto</label>
@@ -32,20 +33,35 @@
 
         <div class="mb-3">
             <label class="form-label">Precio</label>
-            <input type="number" class="form-control" name="precioProducto"  placeholder="Inserte el precio en MXN" required>
+            <input type="number" class="form-control" name="precioProducto"  placeholder="Inserte el nuevo precio en MXN" required>
         </div>
 
         <div class="mb-3">
             <label class="form-label">Cantidad</label>
-            <input type="number" class="form-control" name="cantidadProducto" placeholder="Inserte la cantidad disponible" required>
+            <input type="number" class="form-control" name="cantidadProducto" placeholder="Inserte la nueva cantidad disponible" required>
         </div>
 
         <div class="mb-3">
             <label class="form-label">Imagen del Producto (jpeg,png,webp,gift)</label>
             <input type="file" accept="image/*" class="form-control" name="imagenProducto" placeholder="Inserte la URL de la imagen" required>
         </div>
-        <input  type="submit" class="btn btn-primary" value="Añadir producto"></input>
+        <input  type="submit" class="btn btn-primary" value="Actualizar producto"></input>
     </form>
     <script src="app.js"></script>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+
+    if (!id) {
+        alert('No se especificó un producto para editar.');
+        window.location.href = 'trabajores.html';
+        return;
+    }
+    document.getElementById('idProducto').value = id;
+    });
+    </script>
+
 </body>
 </html>

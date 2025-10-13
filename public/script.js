@@ -61,16 +61,11 @@ function mostrarCatalogo() {
             <td>$${producto.precio}</td>
             <td>${producto.stock}</td>
             <td>
-                <button class="btn btn-sm btn-primary btn-editar" data-prod="${producto.id_producto}">Editar</button>
+                <a href="editar.html?id=${producto.id_producto}" class="btn btn-sm btn-primary">Editar</a>
                 <button class="btn btn-sm btn-danger btn-eliminar" data-prod="${producto.id_producto}">Eliminar</button>
             </td>
             </tr>
         `;
-        });
-        document.querySelectorAll('.btn-editar').forEach(btn => {
-            btn.addEventListener('click', function() {
-                editarProducto(this.getAttribute('data-prod'));
-            });
         });
         document.querySelectorAll('.btn-eliminar').forEach(btn => {
             btn.addEventListener('click', function() {
@@ -82,6 +77,8 @@ function mostrarCatalogo() {
         document.getElementById('tablaProductos').innerHTML = '<p class="text-danger">Error al cargar productos.</p>';
     });
 }
+
+
 
 function borrarProducto(id) {
     if (!confirm('¿Seguro que deseas borrar este pan?')) return;
