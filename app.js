@@ -71,17 +71,31 @@ app.post('/addProducto',upload.single("imagenProducto"), function(req, res) {
     if (!validarImagen.includes(req.file.mimetype)) {
         return res.status(400).send('El formato de la imagen no es válido. Solo se permiten jpeg, png, gif y webp.');
     }
+    //validar que el nombre no exista
+    con.query('SELECT nombre FROM producto WHERE nombre = ?', [nombre], function (err, result) {
+        if (err) {
+            console.error('Error al verificar el nombre del producto en la base de datos: ', err);
+            return res.status(500).send('Error al verificar el nombre del producto en la base de datos.');
+        }
+        if (result.length > 0) {
+            console.log('El nombre del producto ya existe. Por favor, elige otro nombre. ');
+            return res.status(400).send('El nombre del producto ya existe. Por favor, elige otro nombre.');
+        }
 
-    con.query(
-        'INSERT INTO producto (nombre, precio, stock, descripcion, imagen) VALUES (?, ?, ?, ?, ?)', 
-        [nombre, precio, cantidad, descripcion, imagen],
-        function (err, result) {
-            if (err) {
-                console.error('Error al insertar el producto en la base de datos: ', err);
-                return res.status(500).send('Error al insertar el producto en la base de datos.');
-            }
-            res.status(200).send('Producto añadido correctamente.');
+        //insertar en la base de datos
+        con.query(
+            'INSERT INTO producto (nombre, precio, stock, descripcion, imagen) VALUES (?, ?, ?, ?, ?)', 
+            [nombre, precio, cantidad, descripcion, imagen],
+            function (err, result) {
+                if (err) {
+                    console.error('Error al insertar el producto en la base de datos: ', err);
+                    return res.status(500).send('Error al insertar el producto en la base de datos.');
+                }
+                return res.status(200).send('Producto añadido correctamente.');
         });
+
+    });
+    
 });
 
 
@@ -166,18 +180,36 @@ app.post('/updateProducto', upload.single("imagenProducto"), function(req, res) 
         return res.status(400).send('El formato de la imagen no es válido. Solo se permiten jpeg, png, gif y webp.');
     }
 
-    con.query(
-        'UPDATE producto SET nombre = ?, precio = ?, stock = ?, descripcion = ?, imagen = ? WHERE id_producto = ?', 
-        [nombre, precio, cantidad, descripcion, imagen, id_producto],
-        function (err, result) {
-            if (err) {
-                console.error('Error al actualizar el producto en la base de datos: ', err);
-                return res.status(500).send('Error al actualizar el producto en la base de datos.');
-            }
-            if (result.affectedRows === 0) {
-                return res.status(404).send('Producto no encontrado.');
-            }
-            res.status(200).send('Producto actualizado correctamente.');
+    //validar que el nombre no exista
+    con.query('SELECT nombre FROM producto WHERE nombre = ?', [nombre], function (err, result) {
+        if (err) {
+            console.error('Error al verificar el nombre del producto en la base de datos: ', err);
+            return res.status(500).send('Error al verificar el nombre del producto en la base de datos.');
+        }
+        if (result.length > 0) {
+            console.log('El nombre del producto ya existe. Por favor, elige otro nombre. ');
+            return res.status(400).send('El nombre del producto ya existe. Por favor, elige otro nombre.');
+        }
+        //insertar en la base de datos
+        con.query(
+            'UPDATE producto SET nombre = ?, precio = ?, stock = ?, descripcion = ?, imagen = ? WHERE id_producto = ?', 
+            [nombre, precio, cantidad, descripcion, imagen, id_producto],
+            function (err, result) {
+                if (err) {
+                    console.error('Error al actualizar el producto en la base de datos: ', err);
+                    return res.status(500).send('Error al actualizar el producto en la base de datos.');
+                }
+                if (result.affectedRows === 0) {
+                    return res.status(404).send('Producto no encontrado.');
+                }
+                res.status(200).send('Producto actualizado correctamente.');
         });
+
+
+    });
+
+    
 });
+
+
 
