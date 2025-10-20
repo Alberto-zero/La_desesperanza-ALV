@@ -1,15 +1,21 @@
 //conexion mysql
-const mysql = require('mysql2');
+require('dotenv').config()
+const mysql = require('mysql2/promise')
+const session = require('express-session')
 const express = require('express');
 const bodyParser = require('body-parser');
 const multer = require("multer");
 const upload = multer({ storage: multer.memoryStorage() });
 const app = express();
-var con= mysql.createConnection({
-    host: "localhost",
-    user: "root",
-    password: "n0m3l0",
-    database: "esperanza"
+const MySQLStore = require('express-mysql-session')(session)
+
+
+var con= mysql.createPool({
+    host: process.env.MYSQL_HOST,
+    user: process.env.MYSQL_USER,
+    password: process.env.MYSQL_PASSWORD,
+    database: process.env.MYSQL_DATABASE
+
 });
 
 
@@ -204,12 +210,25 @@ app.post('/updateProducto', upload.single("imagenProducto"), function(req, res) 
                 }
                 res.status(200).send('Producto actualizado correctamente.');
         });
-
-
+    
     });
 
-    
 });
 
+//sesiones
+
+app.use(session({
+    key: 'session_cookie',
+    secret: process.env.SESSION_SECRET,
+    store: sessionStore,
+    resave: false,
+    saveUninitialized: false,
+    cookie: { 
+        maxAge: 1000 * 60 * 60 * 24,
+        httpOnly: true,
+        secure: false,
+        sameSite: 'lax'
+    } 
+}))
 
 
