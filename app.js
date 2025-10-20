@@ -1,6 +1,6 @@
 //conexion mysql
 require('dotenv').config()
-const mysql = require('mysql2/promise')
+const mysql = require('mysql2')
 const session = require('express-session')
 const express = require('express');
 const bodyParser = require('body-parser');
@@ -20,11 +20,8 @@ var con= mysql.createPool({
 
 
 
-con.connect(function(err) {
-    if (err) throw err;
-    console.log("Conectado a la base de datos MySQL!");
-}
-);
+
+const sessionStore = new MySQLStore({}, con)
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
