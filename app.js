@@ -212,6 +212,18 @@ app.post('/updateProducto', upload.single("imagenProducto"), function(req, res) 
 
 });
 
+//INSERTAR USUARIOS
+app.post('/addUsuario', function(req, res) {
+    const nombre = req.body.nombre;
+    const apellido_p=req.body.apellido_p;
+    const apellido_m=req.body.apellido_m;
+    const direccion=req.body.direccion;
+    const email=req.body.email;
+    const password=req.body.password;
+
+});
+
+
 //sesiones
 
 app.use(session({
