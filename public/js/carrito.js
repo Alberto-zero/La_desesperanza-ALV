@@ -15,24 +15,32 @@ class CarritoManager {
         this.setCookie('carrito', JSON.stringify(this.carrito), 7); // Guarda por 7 días
     }
 
-    // Añadir un producto al carrito
     agregarProducto(producto, cantidad = 1) {
-        const itemExistente = this.carrito.find(item => item.id === producto.id_producto);
+        fetch('/checkSession')
+        .then(response => response.json())
+        .then(data => {
+            if (data.authenticated) {
+                const itemExistente = this.carrito.find(item => item.id === producto.id_producto);
         
-        if (itemExistente) {
-            itemExistente.cantidad += cantidad;
-        } else {
-            this.carrito.push({
-                id: producto.id_producto,
-                nombre: producto.nombre,
-                precio: producto.precio,
-                cantidad: cantidad
-            });
-        }
+                if (itemExistente) {
+                    itemExistente.cantidad += cantidad;
+                } else {
+                    this.carrito.push({
+                        id: producto.id_producto,
+                        nombre: producto.nombre,
+                        precio: producto.precio,
+                        cantidad: cantidad
+                    });
+                }
+                
+                this.guardarCarrito();
+                this.actualizarIconoCarrito();
+                this.mostrarNotificacion('Producto agregado al carrito');
+            } else {
+                alert('Debes iniciar sesión para agregar productos al carrito.');
+            }
+        })
         
-        this.guardarCarrito();
-        this.actualizarIconoCarrito();
-        this.mostrarNotificacion('Producto agregado al carrito');
     }
 
     // Eliminar un producto del carrito
