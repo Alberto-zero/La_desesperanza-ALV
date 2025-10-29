@@ -213,13 +213,73 @@ app.post('/updateProducto', upload.single("imagenProducto"), function(req, res) 
 });
 
 //INSERTAR USUARIOS
-app.post('/addUsuario', function(req, res) {
+app.post('/addUsuario', upload.none(), function(req, res) {
     const nombre = req.body.nombre;
     const apellido_p=req.body.apellido_p;
     const apellido_m=req.body.apellido_m;
     const direccion=req.body.direccion;
     const email=req.body.email;
     const password=req.body.password;
+    const sesion=req.body.sesion; 
+    console.log('Valor de sesion recibido' + sesion); 
+    //validaciones
+    let validarEmail=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;    
+    if(!validarEmail.test(email)){
+        return  res.status(400).send('El correo electrónico no es válido.');
+    }
+
+    if(password.length<8 || password.length>20){
+        return res.status(400).send('La contraseña debe tener entre 8 y 20 caracteres.');
+    }
+
+    if(!isNaN(nombre) || !isNaN(apellido_p) || !isNaN(apellido_m)){
+        return res.status(400).send('El nombre y apellidos no pueden ser números.');
+    }
+
+    if(password.includes(" ")){
+        return res.status(400).send('La contraseña no puede contener espacios.');
+    }
+
+    const sesionStr = String(sesion);
+    if(sesionStr !== "0" && sesionStr !== "1"){
+        return res.status(400).send('El tipo de usuario no es válido.');
+    }
+
+    if(nombre.length<3 || nombre.length>30){
+        return res.status(400).send('El nombre debe tener entre 3 y 30 caracteres.');
+    }
+
+    if(apellido_p.length<3 || apellido_p.length>30){
+        return res.status(400).send('El apellido paterno debe tener entre 3 y 30 caracteres.');
+    }
+
+    if(apellido_m.length<3 || apellido_m.length>30){
+        return res.status(400).send('El apellido materno debe tener entre 3 y 30 caracteres.');
+    }
+    //validar que el email no exista
+    con.query('SELECT email FROM usuario WHERE email = ?', [email], function (err, result) {
+        if (err) {
+            console.error('Error al verificar el email en la base de datos: ', err);
+            return res.status(500).send('Error al verificar el email en la base de datos.');
+        }
+        if (result.length > 0) {
+            console.log('El correo electrónico ya está registrado. Por favor, utiliza otro correo.');
+            return res.status(400).send('El correo electrónico ya está registrado. Por favor, utiliza otro correo.');
+        }
+    });
+        //insertar en la base de datos
+
+    con.query(
+        'INSERT INTO usuario (sesion, nombre, apellido_paterno, apellido_materno, email, direccion, contrasena) VALUES (?, ?, ?, ?, ?, ?, ?)', 
+        [sesion, nombre, apellido_p, apellido_m, email, direccion, password],
+        function (err, result) {
+            if (err) {
+                console.error('Error al insertar el usuario en la base de datos: ', err);
+                return res.status(500).send('Error al insertar el usuario en la base de datos.');
+            }
+            return res.status(200).send('Usuario añadido correctamente.');
+    });
+
 
 });
 
