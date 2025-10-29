@@ -245,12 +245,35 @@ class CarritoManager {
 
     // Procesar la compra
     procesarCompra() {
-        // Aquí puedes agregar la lógica para procesar la compra
-        // Por ahora solo mostraremos un mensaje y limpiaremos el carrito
-        alert('¡Gracias por tu compra!');
-        this.limpiarCarrito();
-        bootstrap.Modal.getInstance(document.getElementById('carritoModal')).hide();
+    if (this.carrito.length === 0) {
+        alert('El carrito está vacío.');
+        return;
     }
+
+    fetch('/carrito/comprar', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ carrito: this.carrito })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert(data.error);
+        } else {
+            alert(`¡Gracias por tu compra! Total: $${data.total.toFixed(2)}`);
+            this.limpiarCarrito();
+            bootstrap.Modal.getInstance(document.getElementById('carritoModal')).hide();
+            location.reload();
+        }
+    })
+    .catch(error => {
+        console.log('Error al procesar la compra:', error);
+        alert('Ocurrió un error al procesar la compra.2');
+        location.reload(); 
+    });
+}
 }
 
 // Crear instancia global del carrito

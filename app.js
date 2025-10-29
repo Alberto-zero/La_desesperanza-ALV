@@ -1,15 +1,18 @@
 //conexion mysql
-require('dotenv').config()
-const mysql = require('mysql2')
-const session = require('express-session')
+require('dotenv').config();
+const mysql = require('mysql2');
+const session = require('express-session');
 const express = require('express');
-const bodyParser = require('body-parser');
-
-const multer = require("multer");
-const upload = multer({ storage: multer.memoryStorage() });
 const app = express();
-const MySQLStore = require('express-mysql-session')(session)
+const MySQLStore = require('express-mysql-session')(session);
+const carritoRoutes = require('./routes/carrito');
 
+// --- Middlewares para procesar JSON y formularios ---
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+const bodyParser = require('body-parser');
+const multer = require('multer');
+const upload = multer();
 
 var con= mysql.createPool({
     host: process.env.MYSQL_HOST,
@@ -19,7 +22,8 @@ var con= mysql.createPool({
 
 });
 
-
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 
 const sessionStore = new MySQLStore({}, con)
@@ -38,8 +42,7 @@ app.use(session({
     } 
 }));
 
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
+app.use('/carrito', carritoRoutes);
 
 // Middleware para prevenir el caché en páginas restringidas
 app.use(['/trabajores.html', '/añadir.html', '/editar.html'], function(req, res, next) {
@@ -327,7 +330,7 @@ app.post('/login', upload.none(), function(req, res) {
             
             // Guardar datos del usuario en la sesión
             req.session.user = {
-                id: result[0].id_usuario,
+                id_usuario: result[0].id_usuario,
                 email: result[0].email,
                 nombre: result[0].nombre,
                 sesion: result[0].sesion // 0 para cliente, 1 para trabajador
