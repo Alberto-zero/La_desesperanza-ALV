@@ -4,6 +4,7 @@ const mysql = require('mysql2')
 const session = require('express-session')
 const express = require('express');
 const bodyParser = require('body-parser');
+const carritorutas = require('./routes/carrito');
 const multer = require("multer");
 const upload = multer({ storage: multer.memoryStorage() });
 const app = express();
@@ -17,8 +18,8 @@ var con= mysql.createPool({
     database: process.env.MYSQL_DATABASE
 
 });
-
-
+app.locals.db = pool.promise(); 
+app.use('/carrito', carritorutas);
 
 
 const sessionStore = new MySQLStore({}, con)

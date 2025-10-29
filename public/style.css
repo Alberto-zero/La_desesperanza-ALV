@@ -9,6 +9,96 @@ i{
     cursor: pointer; 
 }
 
+/* Estilos para el carrito */
+.bi-basket3 {
+    position: relative;
+    display: inline-block;
+    font-size: 1.5rem;
+    transition: transform 0.2s ease;
+}
+
+.bi-basket3:hover {
+    transform: scale(1.1);
+}
+
+.bi-basket3[data-count]:after {
+    position: absolute;
+    right: -0.75em;
+    top: -0.75em;
+    content: attr(data-count);
+    padding: 0.35em;
+    border-radius: 50%;
+    line-height: 1em;
+    color: white;
+    background: #dc3545;
+    text-align: center;
+    min-width: 1.5em;
+    font-weight: bold;
+    font-family: sans-serif;
+    font-size: 0.75em;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.modal-content {
+    border-radius: 0.5rem;
+}
+
+.table > :not(caption) > * > * {
+    padding: 1rem;
+}
+
+.input-group-sm input[type="number"] {
+    text-align: center;
+}
+
+.input-group-sm input[type="number"]::-webkit-inner-spin-button,
+.input-group-sm input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.input-group-sm input[type="number"] {
+    -moz-appearance: textfield;
+}
+
+.notificacion {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: #28a745;
+    color: white;
+    padding: 15px 25px;
+    border-radius: 5px;
+    z-index: 1060;
+    animation: slideIn 0.3s ease-out;
+}
+
+.notificacion.fade-out {
+    animation: fadeOut 0.3s ease-out forwards;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
 .video-background {
     position: fixed;
     top: 0;

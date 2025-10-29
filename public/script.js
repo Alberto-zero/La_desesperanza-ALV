@@ -30,8 +30,10 @@ function cargarProductos() {
                     <h2>${producto.nombre}</h2>
                     <p>${producto.descripcion}</p>
                     <p class="fs-4 fw-bold">$${producto.precio}</p>
-                    <p>Stock: ${producto.stock}</p><button class="btn btn-primary">Agregar al carrito</button>
-                    
+                    <p>Stock: ${producto.stock}</p>
+                    <button class="btn btn-primary" onclick="agregarAlCarrito(${JSON.stringify(producto).replace(/"/g, '&quot;')})">
+                        <i class="bi bi-cart-plus"></i> Agregar al carrito
+                    </button>
                 </div>
                 </section>
             `;
@@ -40,6 +42,16 @@ function cargarProductos() {
             console.error(err);
             document.getElementById('catalogo').innerHTML = '<p class="text-danger">Error al cargar productos.</p>';
     });
+}
+
+// Función para agregar productos al carrito
+function agregarAlCarrito(producto) {
+    if (typeof carritoManager === 'undefined') {
+        console.error('CarritoManager no está definido');
+        return;
+    }
+    
+    carritoManager.agregarProducto(producto);
 }
 
 function mostrarCatalogo() {
