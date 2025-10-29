@@ -23,8 +23,31 @@ var con= mysql.createPool({
 
 const sessionStore = new MySQLStore({}, con)
 
+app.use(session({
+    key: 'session_cookie',
+    secret: process.env.SESSION_SECRET,
+    store: sessionStore,
+    resave: false,
+    saveUninitialized: false,
+    cookie: { 
+        maxAge: 1000 * 60 * 60 * 24, // 24 horas
+        httpOnly: true,
+        secure: false,
+        sameSite: 'lax'
+    } 
+}));
+
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
+
+// Middleware para prevenir el caché en páginas restringidas
+app.use(['/trabajores.html', '/añadir.html', '/editar.html'], function(req, res, next) {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    next();
+});
+
 app.use(express.static('public'));
 
 app.listen(3000, function() {
@@ -284,7 +307,110 @@ app.post('/addUsuario', upload.none(), function(req, res) {
 });
 
 
-//sesiones
+//Login de usuarios
+app.post('/login', upload.none(), function(req, res) {
+    const email = req.body.email;
+    const password = req.body.password;
+
+    con.query(
+        'SELECT * FROM usuario WHERE email = ? AND contrasena = ?',
+        [email, password],
+        function(err, result) {
+            if (err) {
+                console.error('Error al verificar las credenciales:', err);
+                return res.status(500).send('Error al iniciar sesión');
+            }
+            if (result.length === 0) {
+                return res.status(401).send('Correo o contraseña incorrectos');
+            }
+            
+            // Guardar datos del usuario en la sesión
+            req.session.user = {
+                id: result[0].id_usuario,
+                email: result[0].email,
+                nombre: result[0].nombre,
+                sesion: result[0].sesion // 0 para cliente, 1 para trabajador
+            };
+         
+            res.redirect('/index.html');
+        }
+    );
+});
+
+// Middleware para verificar si es trabajador
+function esTrabajador(req, res, next) {
+    if (req.session.user && req.session.user.sesion === 1) {
+        next();
+    } else {
+        res.status(403).send('No tienes acceso a esta sección. Solo trabajadores pueden acceder.');
+    }
+}
+
+// Middleware para proteger archivos de trabajadores
+app.use(['/trabajores.html', '/añadir.html', '/editar.html'], function(req, res, next) {
+    // Establecer headers para prevenir caché en páginas protegidas
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '-1');
+
+    // Verificar si el usuario está autenticado
+    if (!req.session.user) {
+        if (req.xhr || req.headers.accept.includes('application/json')) {
+            return res.status(401).json({ error: 'No autenticado' });
+        }
+        return res.redirect('/login.html');
+    }
+
+    // Verificar si el usuario es trabajador
+    if (req.session.user.sesion !== 1) {
+        if (req.xhr || req.headers.accept.includes('application/json')) {
+            return res.status(403).json({ error: 'Acceso denegado' });
+        }
+        return res.status(403).sendFile(__dirname + '/public/error-acceso.html');
+    }
+
+    next();
+});
+
+// Ruta para verificar el estado de la sesión
+app.get('/checkSession', function(req, res) {
+    if (req.session.user) {
+        res.json({
+            authenticated: true,
+            user: {
+                email: req.session.user.email,
+                nombre: req.session.user.nombre,
+                sesion: req.session.user.sesion
+            }
+        });
+    } else {
+        res.json({ authenticated: false });
+    }
+});
+
+// Ruta para cerrar sesión
+app.get('/logout', function(req, res) {
+    req.session.destroy();
+    res.redirect('/index.html');
+});
+
+app.use((req, res, next) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    next();
+});
+
+// Middleware para proteger rutas de trabajadores
+const protegerRutaTrabajador = (req, res, next) => {
+    if (!req.session.user) {
+        return res.redirect('/login.html');
+    }
+    if (req.session.user.sesion !== 1) {
+        return res.redirect('/error-acceso.html');
+    }
+    next();
+};
 
 app.use(session({
     key: 'session_cookie',
