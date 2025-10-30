@@ -239,6 +239,17 @@ app.post('/updateProducto', upload.single("imagenProducto"), function(req, res) 
 
 });
 
+app.get('/getVentas', function(req, res) {
+    con.query('SELECT * FROM venta', function (err, result) {
+        if (err) {
+            console.error('Error al obtener las ventas de la base de datos: ', err);
+            return res.status(500).send('Error al obtener las ventas de la base de datos.');
+        }
+        res.json(result);
+    });
+});
+
+
 //INSERTAR USUARIOS
 app.post('/addUsuario', upload.none(), function(req, res) {
     const nombre = req.body.nombre;
