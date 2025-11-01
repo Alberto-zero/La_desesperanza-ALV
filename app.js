@@ -128,7 +128,15 @@ app.post('/addProducto',upload.single("imagenProducto"), function(req, res) {
     
 });
 
-
+app.get('/getUsuarios', function(req, res) {
+    con.query('Select * from usuario', function (err, result) {
+        if (err) {
+            console.error('Error al obtener los usuarios de la base de datos: ', err);
+            return res.status(500).send('Error al obtener los usuarios de la base de datos.');
+        }
+        res.json(result);
+    });
+});
 
 app.get('/getProductos', function(req, res) {
     con.query('SELECT * FROM producto', function (err, result) {
@@ -145,6 +153,29 @@ app.get('/getProductos', function(req, res) {
 
         });
         res.json(result);
+    });
+});
+
+app.post('/deleteUsuario', function(req, res) {
+    const id_usuario = parseInt(req.body.id_usuario);
+
+    if (isNaN(id_usuario) || id_usuario <= 0) {
+        return res.status(400).json({ error: 'ID inválido' });
+    }
+
+    // Verificar si el usuario tiene ventas
+    con.query('SELECT COUNT(*) AS total FROM venta WHERE id_usuario = ?', [id_usuario], function(err, result) {
+        if (err) return res.status(500).json({ error: 'Error al verificar ventas del usuario.' });
+
+        if (result[0].total > 0) {
+            return res.status(400).json({ error: 'No puedes eliminar este usuario porque tiene ventas registradas.' });
+        }
+
+        // Si no tiene ventas, lo borramos
+        con.query('DELETE FROM usuario WHERE id_usuario = ?', [id_usuario], function(err, result) {
+            if (err) return res.status(500).json({ error: 'Error al eliminar el usuario.' });
+            res.status(200).json({ message: 'Usuario eliminado correctamente.' });
+        });
     });
 });
 
@@ -239,13 +270,33 @@ app.post('/updateProducto', upload.single("imagenProducto"), function(req, res) 
 
 });
 
-app.get('/getVentas', function(req, res) {
-    con.query('SELECT * FROM venta', function (err, result) {
+app.get('/getVentas', (req, res) => {
+    const query = `
+        SELECT 
+            v.id_venta,
+            v.fecha,
+            v.cantidad,
+            v.total,
+            p.id_producto,
+            p.nombre AS nombre_producto,
+            p.precio AS precio_producto,
+            p.descripcion,
+            u.id_usuario,
+            CONCAT(u.nombre, ' ', u.apellido_paterno, ' ', u.apellido_materno) AS nombre_completo,
+            u.email,
+            u.direccion
+        FROM venta v
+        INNER JOIN usuario u ON v.id_usuario = u.id_usuario
+        INNER JOIN producto p ON v.id_producto = p.id_producto
+        ORDER BY v.fecha DESC;
+    `;
+
+    con.query(query, (err, results) => {
         if (err) {
-            console.error('Error al obtener las ventas de la base de datos: ', err);
-            return res.status(500).send('Error al obtener las ventas de la base de datos.');
+        console.error('Error al obtener las ventas:', err);
+        return res.status(500).send('Error en el servidor');
         }
-        res.json(result);
+        res.json(results);
     });
 });
 

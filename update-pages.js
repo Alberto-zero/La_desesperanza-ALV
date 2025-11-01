@@ -16,7 +16,6 @@ const menuTemplate = `
                     <i class="bi bi-person"></i>
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                    <!-- El menú se actualizará dinámicamente -->
                 </ul>
                 <i class="bi bi-basket3"></i>
 `;
@@ -39,7 +38,6 @@ htmlFiles.forEach(file => {
             menuTemplate
         );
         
-        // Actualizar los scripts
         content = content.replace(
             /<script[\s\S]*?<\/body>/,
             scriptsTemplate

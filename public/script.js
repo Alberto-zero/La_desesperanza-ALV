@@ -1,7 +1,140 @@
 document.addEventListener('DOMContentLoaded', () => {
-    cargarProductos();
-    mostrarCatalogo();
+    if (document.getElementById('catalogo')) {
+        console.log("Página de catálogo detectada");
+        cargarProductos();
+    }
+
+    if (document.querySelector('#tablaProductos')) {
+        console.log("Página de administración de productos detectada");
+        mostrarCatalogo();
+    }
+
+    if (document.querySelector('#tablaVentas')) {
+        console.log("Página de ventas detectada");
+        cargarVentas();
+    }
+
+    if (document.querySelector('#tablaUsuarios')) {
+        console.log("Página de administración de productos detectada");
+        cargarUsuarios();
+    }
 });
+
+function cargarVentas(){
+    
+    console.log("Cargando ventas...");
+    fetch('/getVentas')
+        .then(res => {
+            if (!res.ok) throw new Error('Error al obtener ventas');
+            return res.json();
+        })
+        .then(ventas => {
+            const tbody = document.querySelector('#tablaVentas tbody');
+            tbody.innerHTML = '';
+
+            ventas.forEach((venta, index) => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${venta.id_venta}</td>
+                        <td>${new Date(venta.fecha).toLocaleDateString()}</td>
+                        <td>${venta.nombre_completo}</td>
+                        <td>${venta.email}</td>
+                        <td>${venta.nombre_producto}</td>
+                        <td>${venta.cantidad}</td>
+                        <td>$${venta.precio_producto.toFixed(2)}</td>
+                        <td>$${venta.total.toFixed(2)}</td>
+                    </tr>
+                `;
+            });
+        })
+        .catch(error => {
+            console.error(error);
+            alert('Hubo un problema al cargar las ventas');
+        });
+}
+
+function cargarUsuarios() {
+    console.log("Cargando Usuarios...");
+
+    fetch('/getUsuarios')
+        .then(res => {
+            if (!res.ok) throw new Error('Error al obtener usuarios');
+            return res.json();
+        })
+        .then(usuarios => {
+            const tbody = document.querySelector('#tablaUsuarios tbody');
+            tbody.innerHTML = '';
+
+            if (usuarios.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center text-muted">
+                            No hay usuarios registrados.
+                        </td>
+                    </tr>`;
+                return;
+            }
+
+            usuarios.forEach((usuario, index) => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${usuario.id_usuario}</td>
+                        <td>${usuario.sesion}</td>
+                        <td>${usuario.nombre} ${usuario.apellido_paterno} ${usuario.apellido_materno}</td>
+                        <td>${usuario.email}</td>
+                        <td>${usuario.direccion}</td>
+                        <td>
+                            <button class="btn btn-sm btn-danger btn-eliminar" data-usuario="${usuario.id_usuario}">Eliminar</button>
+                        </td>
+                    </tr>
+                `;
+                
+            });
+            document.querySelectorAll('.btn-eliminar').forEach(btn => {
+                btn.addEventListener('click', function() {
+                borrarUsuario(this.getAttribute('data-usuario'));
+            });
+        });
+        })
+        .catch(err => {
+            console.error(err);
+            const tbody = document.querySelector('#tablaUsuarios tbody');
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="text-center text-danger">
+                        Error al cargar los usuarios.
+                    </td>
+                </tr>`;
+        });
+}
+
+function borrarUsuario(id) {
+    if (!confirm('¿Seguro que deseas borrar este usuario?')) return;
+    fetch('/deleteUsuario', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_usuario: parseInt(id) })
+    })
+    .then(response => {
+        console.log('Respuesta del servidor:', response.status);
+        return response.json();
+    })
+    .then(data => {
+        console.log('Datos recibidos:', data);
+        if (data.error) {
+            alert(data.error);
+        }
+            else {  
+            alert(data.message);
+            cargarUsuarios();
+        }
+    })
+    .catch(err => {
+        console.error('Error al eliminar el usuario:', err);
+        alert('Error al eliminar el usuario.');
+    });
+} 
+
 function cargarProductos() {
 
     console.log("Cargando productos...");
@@ -120,8 +253,8 @@ function borrarProducto(id) {
     });
 }
 
-function mostrarVentas() {
-    fetch('/getVentas')
+function mostrarProductos() {
+    fetch('/getProductos')
     .then(res => {
             if (!res.ok) throw new Error('Error al obtener productos');
             return res.json();

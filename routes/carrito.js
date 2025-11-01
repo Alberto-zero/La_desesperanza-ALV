@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const pool = require('../db'); // tu conexión a MySQL
+const pool = require('../db.js'); // tu conexión a MySQL
 
 router.get('/', (req, res) => {
     res.send('Ruta del carrito funcionando');
