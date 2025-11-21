@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="style.css">
     <link rel="icon" type="images/png" href="images/logo.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <title>La desesperanza</title>
 </head>
 <body>
@@ -75,9 +77,8 @@
         <section id="maparandom" class="py-5">
             <div class="container">
             <h2 class="text-center fw-bold mb-4">Encuéntranos Aquí</h2>
-            <div class="ratio ratio-16x9">
-                <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3765.1025462922507!2d-99.12201660000001!3d19.321356!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x85ce01c3c0adc687%3A0x89fea6c28586db2d!2sLa%20Casa%20de%20Gok%C3%BA!5e0!3m2!1ses!2smx!4v1760148176719!5m2!1ses!2smx" width="600" height="450" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe> 
-            </div>
+            <!-- Contenedor para Leaflet -->
+            <div id="map" style="width:100%; height:450px; border-radius:8px; overflow:hidden;"></div>
             </div>
         </section>
 
@@ -88,6 +89,22 @@
     </footer>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Inicializar mapa Leaflet -->
+    <script>
+        (function(){
+            var lat = 19.321356;
+            var lon = -99.12201660000001;
+            var map = L.map('map').setView([lat, lon], 16);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
+            }).addTo(map);
+            L.marker([lat, lon]).addTo(map).bindPopup('<strong>La Casa de Gokú</strong><br>La Desesperanza').openPopup();
+        })();
+    </script>
     <script src="js/auth.js"></script>
     <script src="js/carrito.js"></script>
     <script src="script.js"></script>
