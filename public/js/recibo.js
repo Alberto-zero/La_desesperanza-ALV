@@ -75,7 +75,7 @@ function generarRecibo(venta) {
                         <h6 class="fw-bold text-muted">DATOS DEL CLIENTE</h6>
                         <p><strong>Nombre:</strong> ${venta.nombre || 'N/A'}</p>
                         <p><strong>Email:</strong> ${venta.email || 'N/A'}</p>
-                        <p><strong>Negocio:</strong> ${venta.nombre_negocio || 'N/A'}</p>
+                        <p><strong>Negocio:</strong> ${venta.nombre_negocio || 'La desesperanza'}</p>
                     </div>
                 </div>
 

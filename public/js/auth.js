@@ -10,6 +10,7 @@ function actualizarMenuUsuario() {
                 let menuHtml = `
                     <li><span class="dropdown-item-text">Hola, ${data.user.nombre}</span></li>
                     <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="perfil.html"><i class="bi bi-person-circle"></i> Mi perfil</a></li>
                     <li><a class="dropdown-item" href="historial-compras.html"><i class="bi bi-clock-history"></i> Mis compras</a></li>
                 `;
 
@@ -62,7 +63,7 @@ function verificarSesion() {
             actualizarMenuUsuario();
 
             const restrictedPages = ['/trabajores.html', '/añadir.html', '/editar.html'];
-            const restrictedToUsersPages = ['/carrito-compras.html', '/historial-compras.html', '/recibo.html'];
+            const restrictedToUsersPages = ['/carrito-compras.html', '/historial-compras.html', '/recibo.html', '/perfil.html'];
             const currentPath = window.location.pathname;
 
             // Si estamos en una página solo para administradores

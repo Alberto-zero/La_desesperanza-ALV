@@ -1,4 +1,4 @@
-//conexion mysql
+
 require('dotenv').config();
 const mysql = require('mysql2');
 const session = require('express-session');
@@ -20,9 +20,11 @@ var con= mysql.createPool({
     password: process.env.MYSQL_PASSWORD,
     database: process.env.MYSQL_DATABASE,
     port: process.env.MYSQL_PORT || 3306,
-    connectionLimit: 3,
+    connectionLimit: 2,
     waitForConnections: true,
-    queueLimit: 0,
+    queueLimit: 10,
+    enableKeepAlive: true,
+    keepAliveInitialDelayMs: 0,
     ssl: {
         rejectUnauthorized: false
     }
@@ -118,9 +120,9 @@ app.post('/addProducto',upload.single("imagenProducto"), function(req, res) {
             return res.status(400).send('El nombre del producto ya existe. Por favor, elige otro nombre.');
         }
 
-        //insertar en la base de datos
+        //insertar en la base de datos con activo=1 por defecto
         con.query(
-            'INSERT INTO producto (nombre, precio, stock, descripcion, imagen) VALUES (?, ?, ?, ?, ?)', 
+            'INSERT INTO producto (nombre, precio, stock, descripcion, imagen, activo) VALUES (?, ?, ?, ?, ?, 1)', 
             [nombre, precio, cantidad, descripcion, imagen],
             function (err, result) {
                 if (err) {
@@ -135,7 +137,7 @@ app.post('/addProducto',upload.single("imagenProducto"), function(req, res) {
 });
 
 app.get('/getUsuarios', function(req, res) {
-    con.query('Select * from usuario', function (err, result) {
+    con.query('SELECT * FROM usuario WHERE activo = 1', function (err, result) {
         if (err) {
             console.error('Error al obtener los usuarios de la base de datos: ', err);
             return res.status(500).send('Error al obtener los usuarios de la base de datos.');
@@ -145,7 +147,7 @@ app.get('/getUsuarios', function(req, res) {
 });
 
 app.get('/getProductos', function(req, res) {
-    con.query('SELECT * FROM producto', function (err, result) {
+    con.query('SELECT * FROM producto WHERE activo = 1', function (err, result) {
         if (err) {
             console.error('Error al obtener los productos de la base de datos: ', err);
             return res.status(500).send('Error al obtener los productos de la base de datos.');
@@ -169,19 +171,11 @@ app.post('/deleteUsuario', function(req, res) {
         return res.status(400).json({ error: 'ID inválido' });
     }
 
-    // Verificar si el usuario tiene ventas
-    con.query('SELECT COUNT(*) AS total FROM venta WHERE id_usuario = ?', [id_usuario], function(err, result) {
-        if (err) return res.status(500).json({ error: 'Error al verificar ventas del usuario.' });
-
-        if (result[0].total > 0) {
-            return res.status(400).json({ error: 'No puedes eliminar este usuario porque tiene ventas registradas.' });
-        }
-
-        // Si no tiene ventas, lo borramos
-        con.query('DELETE FROM usuario WHERE id_usuario = ?', [id_usuario], function(err, result) {
-            if (err) return res.status(500).json({ error: 'Error al eliminar el usuario.' });
-            res.status(200).json({ message: 'Usuario eliminado correctamente.' });
-        });
+    // Marcar como inactivo en lugar de eliminar
+    con.query('UPDATE usuario SET activo = 0 WHERE id_usuario = ?', [id_usuario], function(err, result) {
+        if (err) return res.status(500).json({ error: 'Error al eliminar el usuario.' });
+        if (result.affectedRows === 0) return res.status(404).json({ error: 'Usuario no encontrado.' });
+        res.status(200).json({ message: 'Usuario eliminado correctamente.' });
     });
 });
 
@@ -190,7 +184,8 @@ app.post('/deleteProducto', function(req, res) {
     if (isNaN(id_producto) || id_producto <= 0 || !Number.isInteger(Number(id_producto))) {
         return res.status(400).json({ error: 'El ID del producto debe ser un número entero positivo.' });
     }
-    con.query('DELETE FROM producto WHERE id_producto = ?', [id_producto], function (err, result) {
+    // Marcar como inactivo en lugar de eliminar
+    con.query('UPDATE producto SET activo = 0 WHERE id_producto = ?', [id_producto], function (err, result) {
         if (err) {
             console.error('Error al eliminar el producto de la base de datos: ', err);
             return res.status(500).json({ error: 'Error al eliminar el producto de la base de datos.' });
@@ -365,7 +360,7 @@ app.post('/addUsuario', upload.none(), function(req, res) {
         //insertar en la base de datos
 
     con.query(
-        'INSERT INTO usuario (sesion, nombre, apellido_paterno, apellido_materno, email, direccion, contrasena) VALUES (?, ?, ?, ?, ?, ?, ?)', 
+        'INSERT INTO usuario (sesion, nombre, apellido_paterno, apellido_materno, email, direccion, contrasena, activo) VALUES (?, ?, ?, ?, ?, ?, ?, 1)', 
         [sesion, nombre, apellido_p, apellido_m, email, direccion, password],
         function (err, result) {
             if (err) {
@@ -488,6 +483,136 @@ app.get('/getUsuarioActual', function(req, res) {
     });
 });
 
+// Ruta para agregar fondos al usuario
+app.post('/agregarFondos', upload.none(), function(req, res) {
+    if (!req.session.user) {
+        return res.status(401).json({ error: 'No autenticado' });
+    }
+
+    const cantidad = parseFloat(req.body.cantidad);
+    const id_usuario = req.session.user.id_usuario;
+
+    if (isNaN(cantidad) || cantidad <= 0) {
+        return res.status(400).json({ error: 'La cantidad debe ser un número positivo' });
+    }
+
+    if (cantidad > 999999.99) {
+        return res.status(400).json({ error: 'La cantidad no puede ser mayor a 999999.99' });
+    }
+
+    con.query(
+        'UPDATE usuario SET fondos = fondos + ? WHERE id_usuario = ?',
+        [cantidad, id_usuario],
+        function(err, result) {
+            if (err) {
+                console.error('Error al agregar fondos:', err);
+                return res.status(500).json({ error: 'Error al agregar fondos' });
+            }
+            res.status(200).json({ 
+                message: 'Fondos agregados correctamente',
+                cantidad_agregada: cantidad
+            });
+        }
+    );
+});
+
+// Ruta para obtener fondos del usuario actual
+app.get('/getFondos', function(req, res) {
+    if (!req.session.user) {
+        return res.status(401).json({ error: 'No autenticado' });
+    }
+
+    con.query('SELECT fondos FROM usuario WHERE id_usuario = ?', [req.session.user.id_usuario], function(err, result) {
+        if (err) {
+            return res.status(500).json({ error: 'Error al obtener fondos' });
+        }
+        if (result.length === 0) {
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+        
+        res.json({
+            fondos: result[0].fondos || 0
+        });
+    });
+});
+
+// Ruta para actualizar datos del usuario
+app.post('/updateUsuarioPerfil', upload.none(), function(req, res) {
+    if (!req.session.user) {
+        return res.status(401).json({ error: 'No autenticado' });
+    }
+
+    const id_usuario = req.session.user.id_usuario;
+    const { nombre, apellido_paterno, apellido_materno, direccion, email } = req.body;
+
+    // Validaciones
+    if (!nombre || !apellido_paterno || !apellido_materno || !direccion || !email) {
+        return res.status(400).json({ error: 'Todos los campos son requeridos' });
+    }
+
+    const validarEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!validarEmail.test(email)) {
+        return res.status(400).json({ error: 'El email no es válido' });
+    }
+
+    con.query(
+        'UPDATE usuario SET nombre = ?, apellido_paterno = ?, apellido_materno = ?, direccion = ?, email = ? WHERE id_usuario = ?',
+        [nombre, apellido_paterno, apellido_materno, direccion, email, id_usuario],
+        function(err, result) {
+            if (err) {
+                console.error('Error al actualizar usuario:', err);
+                return res.status(500).json({ error: 'Error al actualizar datos del usuario' });
+            }
+            res.status(200).json({ message: 'Datos actualizados correctamente' });
+        }
+    );
+});
+
+// Ruta para cambiar contraseña del usuario
+app.post('/cambiarContrasena', upload.none(), function(req, res) {
+    if (!req.session.user) {
+        return res.status(401).json({ error: 'No autenticado' });
+    }
+
+    const id_usuario = req.session.user.id_usuario;
+    const { contrasena_actual, contrasena_nueva, contrasena_confirmar } = req.body;
+
+    if (!contrasena_actual || !contrasena_nueva || !contrasena_confirmar) {
+        return res.status(400).json({ error: 'Todos los campos son requeridos' });
+    }
+
+    if (contrasena_nueva !== contrasena_confirmar) {
+        return res.status(400).json({ error: 'Las contraseñas no coinciden' });
+    }
+
+    if (contrasena_nueva.length < 8 || contrasena_nueva.length > 20) {
+        return res.status(400).json({ error: 'La contraseña debe tener entre 8 y 20 caracteres' });
+    }
+
+    // Verificar contraseña actual
+    con.query('SELECT contrasena FROM usuario WHERE id_usuario = ?', [id_usuario], function(err, result) {
+        if (err || result.length === 0) {
+            return res.status(500).json({ error: 'Error al verificar contraseña' });
+        }
+
+        if (result[0].contrasena !== contrasena_actual) {
+            return res.status(400).json({ error: 'La contraseña actual es incorrecta' });
+        }
+
+        // Actualizar contraseña
+        con.query(
+            'UPDATE usuario SET contrasena = ? WHERE id_usuario = ?',
+            [contrasena_nueva, id_usuario],
+            function(err, result) {
+                if (err) {
+                    return res.status(500).json({ error: 'Error al cambiar contraseña' });
+                }
+                res.status(200).json({ message: 'Contraseña cambiada correctamente' });
+            }
+        );
+    });
+});
+
 // Ruta para cerrar sesión
 app.get('/logout', function(req, res) {
     req.session.destroy();
@@ -500,6 +625,51 @@ app.use((req, res, next) => {
     res.setHeader('Expires', '0');
     next();
 });
+
+// Obtener todos los productos (activos e inactivos)
+app.get('/getAllProductos', function(req, res) {
+    con.query('SELECT * FROM producto', function (err, result) {
+        if (err) {
+            console.error('Error al obtener los productos: ', err);
+            return res.status(500).json({ error: 'Error al obtener los productos.' });
+        }
+        result.forEach(producto => {
+            if (producto.imagen) {
+                producto.imagen = 'data:image/jpeg;base64,' + producto.imagen.toString('base64');
+            }
+        });
+        res.json(result);
+    });
+});
+
+// Reactivar producto
+app.post('/reactivarProducto', function(req, res) {
+    const id_producto = parseInt(req.body.id_producto);
+    if (isNaN(id_producto) || id_producto <= 0) {
+        return res.status(400).json({ error: 'ID inválido' });
+    }
+    con.query('UPDATE producto SET activo = 1 WHERE id_producto = ?', [id_producto], function(err, result) {
+        if (err) return res.status(500).json({ error: 'Error al reactivar el producto.' });
+        if (result.affectedRows === 0) return res.status(404).json({ error: 'Producto no encontrado.' });
+        res.status(200).json({ message: 'Producto reactivado correctamente.' });
+    });
+});
+
+// Actualizar solo el stock de un producto
+app.post('/updateStock', function(req, res) {
+    const id_producto = parseInt(req.body.id_producto);
+    const stock = parseInt(req.body.stock);
+    if (isNaN(id_producto) || id_producto <= 0 || isNaN(stock) || stock < 0) {
+        return res.status(400).json({ error: 'Datos inválidos' });
+    }
+    con.query('UPDATE producto SET stock = ? WHERE id_producto = ?', [stock, id_producto], function(err, result) {
+        if (err) return res.status(500).json({ error: 'Error al actualizar el stock.' });
+        if (result.affectedRows === 0) return res.status(404).json({ error: 'Producto no encontrado.' });
+        res.status(200).json({ message: 'Stock actualizado correctamente.' });
+    });
+});
+//conexion mysql
+
 
 // Middleware para proteger rutas de trabajadores
 const protegerRutaTrabajador = (req, res, next) => {

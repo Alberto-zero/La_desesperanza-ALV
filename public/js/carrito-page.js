@@ -1,7 +1,25 @@
 // Script para la página de carrito de compras
 document.addEventListener('DOMContentLoaded', () => {
     mostrarCarritoEnPagina();
+    cargarFondosUsuario();
 });
+
+function cargarFondosUsuario() {
+    fetch('/getFondos')
+        .then(response => {
+            if (!response.ok) throw new Error('Error al obtener fondos');
+            return response.json();
+        })
+        .then(data => {
+            const fondosElement = document.getElementById('fondosUsuario');
+            if (fondosElement) {
+                fondosElement.textContent = '$' + parseFloat(data.fondos).toFixed(2);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+}
 
 function mostrarCarritoEnPagina() {
     const carritoContent = document.getElementById('carritoContent');
@@ -179,29 +197,46 @@ function finalizarCompra() {
                 return;
             }
 
-            // Realizar la compra
-            fetch('/carrito/comprar', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ carrito: carritoManager.carrito })
-            })
-            .then(response => response.json())
-            .then(dataCompra => {
-                if (dataCompra.error) {
-                    alert('Error: ' + dataCompra.error);
-                } else {
-                    // Redirigir a página de recibo
-                    const numeroVenta = dataCompra.numeroVenta || 'N/A';
-                    carritoManager.limpiarCarrito();
-                    window.location.href = `/recibo.html?venta=${numeroVenta}`;
-                }
-            })
-            .catch(error => {
-                console.error('Error al procesar la compra:', error);
-                alert('Ocurrió un error al procesar la compra. Por favor, intenta de nuevo.');
-            });
+            // Validar fondos disponibles
+            const totalCarrito = carritoManager.calcularTotal();
+            fetch('/getFondos')
+                .then(res => res.json())
+                .then(dataFondos => {
+                    const fondosDisponibles = dataFondos.fondos || 0;
+                    
+                    if (fondosDisponibles < totalCarrito) {
+                        alert(`Saldo insuficiente.\nTu saldo: $${fondosDisponibles.toFixed(2)}\nTotal a pagar: $${totalCarrito.toFixed(2)}`);
+                        return;
+                    }
+
+                    // Realizar la compra
+                    fetch('/carrito/comprar', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ carrito: carritoManager.carrito })
+                    })
+                    .then(response => response.json())
+                    .then(dataCompra => {
+                        if (dataCompra.error) {
+                            alert('Error: ' + dataCompra.error);
+                        } else {
+                            // Redirigir a página de recibo
+                            const id_compra = dataCompra.id_compra || 'N/A';
+                            carritoManager.limpiarCarrito();
+                            window.location.href = `/recibo.html?compra=${id_compra}`;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error al procesar la compra:', error);
+                        alert('Ocurrió un error al procesar la compra. Por favor, intenta de nuevo.');
+                    });
+                })
+                .catch(error => {
+                    console.error('Error al obtener fondos:', error);
+                    alert('Error al verificar tus fondos.');
+                });
         })
         .catch(error => {
             console.error('Error al verificar sesión:', error);

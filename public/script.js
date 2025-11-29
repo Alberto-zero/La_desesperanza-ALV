@@ -139,41 +139,52 @@ function cargarProductos() {
 
     console.log("Cargando productos...");
 
+    const catalogo = document.getElementById('catalogo');
     fetch('/getProductos')
     .then(res => {
-            if (!res.ok) throw new Error('Error al obtener productos');
-            return res.json();
-        })
+        if (!res.ok) throw new Error('Error al obtener productos');
+        return res.json();
+    })
     .then(productos => {
-    const catalogo = document.getElementById('catalogo');
-    catalogo.innerHTML = '';
-    productos.forEach((producto) => {
-        
         if (productos.length === 0) {
-                catalogo.innerHTML = '<p class="text-center text-muted">No hay productos disponibles.</p>';
-                return;
-            }
+            catalogo.innerHTML = '<p class="text-center text-muted">No hay productos disponibles.</p>';
+            return;
+        }
+        // Filtrar productos con stock > 0
+        const productosDisponibles = productos.filter(p => p.stock > 0);
         
-        catalogo.innerHTML += `
-                <section class="row mb-4">
-                <div class="col-md-3" align-items-center" >
-                    <img src="${producto.imagen || 'images/default.jpg'}" class="img-fluid rounded" alt="${producto.nombre}"  style="max-width: 150px; height: auto;">
+        if (productosDisponibles.length === 0) {
+            catalogo.innerHTML = '<p class="text-center text-muted">No hay productos disponibles en este momento.</p>';
+            return;
+        }
+        
+        let html = '<div class="row row-cols-1 row-cols-md-3 g-4">';
+        productosDisponibles.forEach((producto) => {
+            html += `
+            <div class="col">
+                <div class="card h-100 shadow-sm">
+                    <img src="${producto.imagen || 'images/default.jpg'}" class="card-img-top" alt="${producto.nombre}" style="height: 200px; object-fit: cover;">
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title">${producto.nombre}</h5>
+                        <p class="card-text text-muted" style="min-height: 48px;">${producto.descripcion || ''}</p>
+                        <div class="mt-auto">
+                            <p class="fs-5 fw-bold mb-1">$${parseFloat(producto.precio).toFixed(2)}</p>
+                            <p class="mb-2">Stock: <span class="badge bg-secondary">${producto.stock}</span></p>
+                            <button class="btn btn-primary w-100" onclick="agregarAlCarrito(${JSON.stringify(producto).replace(/"/g, '&quot;')})">
+                                <i class="bi bi-cart-plus"></i> Agregar al carrito
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <div class="col-md-6">
-                    <h2>${producto.nombre}</h2>
-                    <p>${producto.descripcion}</p>
-                    <p class="fs-4 fw-bold">$${producto.precio}</p>
-                    <p>Stock: ${producto.stock}</p>
-                    <button class="btn btn-primary" onclick="agregarAlCarrito(${JSON.stringify(producto).replace(/"/g, '&quot;')})">
-                        <i class="bi bi-cart-plus"></i> Agregar al carrito
-                    </button>
-                </div>
-                </section>
+            </div>
             `;
-    });
-    }).catch(err => {
-            console.error(err);
-            document.getElementById('catalogo').innerHTML = '<p class="text-danger">Error al cargar productos.</p>';
+        });
+        html += '</div>';
+        catalogo.innerHTML = html;
+    })
+    .catch(err => {
+        console.error(err);
+        catalogo.innerHTML = '<p class="text-danger">Error al cargar productos.</p>';
     });
 }
 
