@@ -452,12 +452,40 @@ app.get('/checkSession', function(req, res) {
             user: {
                 email: req.session.user.email,
                 nombre: req.session.user.nombre,
-                sesion: req.session.user.sesion
+                sesion: req.session.user.sesion,
+                id_usuario: req.session.user.id_usuario
             }
         });
     } else {
         res.json({ authenticated: false });
     }
+});
+
+// Ruta para obtener datos del usuario actual
+app.get('/getUsuarioActual', function(req, res) {
+    if (!req.session.user) {
+        return res.status(401).json({ error: 'No autenticado' });
+    }
+
+    con.query('SELECT * FROM usuario WHERE id_usuario = ?', [req.session.user.id_usuario], function(err, result) {
+        if (err) {
+            return res.status(500).json({ error: 'Error al obtener datos del usuario' });
+        }
+        if (result.length === 0) {
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+        
+        const usuario = result[0];
+        res.json({
+            id_usuario: usuario.id_usuario,
+            nombre: usuario.nombre,
+            apellido_paterno: usuario.apellido_paterno,
+            apellido_materno: usuario.apellido_materno,
+            email: usuario.email,
+            direccion: usuario.direccion,
+            fondos: usuario.fondos || 0
+        });
+    });
 });
 
 // Ruta para cerrar sesión

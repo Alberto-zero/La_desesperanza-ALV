@@ -7,11 +7,23 @@ function actualizarMenuUsuario() {
             const adminNavItems = document.getElementById('adminNavItems');
 
             if (data.authenticated) {
-                userDropdownMenu.innerHTML = `
+                let menuHtml = `
                     <li><span class="dropdown-item-text">Hola, ${data.user.nombre}</span></li>
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="#" onclick="cerrarSesion()">Cerrar sesión</a></li>
+                    <li><a class="dropdown-item" href="historial-compras.html"><i class="bi bi-clock-history"></i> Mis compras</a></li>
                 `;
+
+                // Agregar opción de administrador si es trabajador
+                if (data.user.sesion === 1) {
+                    menuHtml += `<li><a class="dropdown-item" href="trabajores.html"><i class="bi bi-tools"></i> Panel de administrador</a></li>`;
+                }
+
+                menuHtml += `
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="#" onclick="cerrarSesion(event)"><i class="bi bi-box-arrow-left"></i> Cerrar sesión</a></li>
+                `;
+
+                userDropdownMenu.innerHTML = menuHtml;
                 
                 // Crear enlaces de administrador solo si el usuario tiene los permisos
                 if (data.user.sesion === 1 && adminNavItems) {
@@ -41,26 +53,38 @@ function actualizarMenuUsuario() {
 // Verificar la sesión del usuario
 function verificarSesion() {
     fetch('/checkSession')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) throw new Error('Error al verificar sesión');
+            return response.json();
+        })
         .then(data => {
             // Actualizar el menú de usuario en todas las páginas
             actualizarMenuUsuario();
 
             const restrictedPages = ['/trabajores.html', '/añadir.html', '/editar.html'];
+            const restrictedToUsersPages = ['/carrito-compras.html', '/historial-compras.html', '/recibo.html'];
             const currentPath = window.location.pathname;
 
-            // Si estamos en una página restringida
+            // Si estamos en una página solo para administradores
             if (restrictedPages.includes(currentPath)) {
                 if (!data.authenticated) {
                     window.location.href = '/login.html';
                     return;
                 }
                 if (data.user.sesion !== 1) {
-                    
-                    return alert('No tienes permiso para acceder a esta página.');
+                    alert('No tienes permiso para acceder a esta página.');
+                    window.location.href = '/index.html';
+                    return;
                 }
             }
 
+            // Si estamos en una página que requiere sesión
+            if (restrictedToUsersPages.includes(currentPath)) {
+                if (!data.authenticated) {
+                    window.location.href = '/login.html';
+                    return;
+                }
+            }
 
             // Si estamos en login y ya estamos autenticados
             if (currentPath === '/login.html' && data.authenticated) {
@@ -68,14 +92,15 @@ function verificarSesion() {
                 return;
             }
 
-            // Si estamos en login.html y ya estamos autenticados
-            if (currentPath === '/login.html' && data.authenticated) {
+            // Si estamos en sign.html y ya estamos autenticados
+            if (currentPath === '/sign.html' && data.authenticated) {
                 window.location.href = '/index.html';
                 return;
             }
         })
         .catch(error => {
-            console.error('Error:', error);
+            console.error('Error al verificar sesión:', error);
+            // No mostrar alerta, simplemente continuar
         });
 }
 

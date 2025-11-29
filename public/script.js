@@ -187,6 +187,17 @@ function agregarAlCarrito(producto) {
     carritoManager.agregarProducto(producto);
 }
 
+// Hacer que el botón del carrito redirija a la página de carrito
+document.addEventListener('DOMContentLoaded', () => {
+    const carritoBtn = document.getElementById('carritoBtn');
+    if (carritoBtn) {
+        carritoBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            window.location.href = '/carrito-compras.html';
+        });
+    }
+}, { once: true });
+
 function mostrarCatalogo() {
     fetch('/getProductos')
     .then(res => {
