@@ -390,7 +390,7 @@ app.post('/login', upload.none(), function(req, res) {
             if (result.length === 0) {
                 return res.status(401).send('Correo o contraseña incorrectos');
             }
-            
+            console.log('Usuario autenticado:', result[0].sesion);
             // Guardar datos del usuario en la sesión
             req.session.user = {
                 id_usuario: result[0].id_usuario,
@@ -406,7 +406,7 @@ app.post('/login', upload.none(), function(req, res) {
 
 // Middleware para verificar si es trabajador
 function esTrabajador(req, res, next) {
-    if (req.session.user && req.session.user.sesion === 1) {
+    if (req.session.user && req.session.user.sesion == 1) {
         next();
     } else {
         res.status(403).send('No tienes acceso a esta sección. Solo trabajadores pueden acceder.');
@@ -429,7 +429,7 @@ app.use(['/trabajores.html', '/añadir.html', '/editar.html'], function(req, res
     }
 
     // Verificar si el usuario es trabajador
-    if (req.session.user.sesion !== 1) {
+    if (req.session.user.sesion != 1) {
         if (req.xhr || req.headers.accept.includes('application/json')) {
             return res.status(403).json({ error: 'Acceso denegado' });
         }

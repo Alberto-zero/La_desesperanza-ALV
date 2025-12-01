@@ -15,7 +15,7 @@ function actualizarMenuUsuario() {
                 `;
 
                 // Agregar opción de administrador si es trabajador
-                if (data.user.sesion === 1) {
+                if (data.user.sesion == 1) {
                     menuHtml += `<li><a class="dropdown-item" href="trabajores.html"><i class="bi bi-tools"></i> Panel de administrador</a></li>`;
                 }
 
@@ -27,23 +27,30 @@ function actualizarMenuUsuario() {
                 userDropdownMenu.innerHTML = menuHtml;
                 
                 // Crear enlaces de administrador solo si el usuario tiene los permisos
-                if (data.user.sesion === 1 && adminNavItems) {
-                    adminNavItems.innerHTML = `
-                        <li class="nav-item">
-                            <a class="nav-link text-light" href="trabajores.html">Trabajadores</a>
-                        </li>
-                    `;
-                } else if (adminNavItems) {
-                    adminNavItems.innerHTML = ''; // Eliminar enlaces si no tiene permisos
+                if (data.user.sesion == 1) {
+                    if (adminNavItems) {
+                        adminNavItems.innerHTML = `
+                            <li class="nav-item">
+                                <a class="nav-link text-light" href="trabajores.html">Trabajadores</a>
+                            </li>
+                        `;
+                    }
+                    // Soporte para páginas que usan el id 'trabajadoresLink'
+                    const trabajadoresLink = document.getElementById('trabajadoresLink');
+                    if (trabajadoresLink) trabajadoresLink.style.display = '';
+                } else {
+                    if (adminNavItems) adminNavItems.innerHTML = '';
+                    const trabajadoresLink = document.getElementById('trabajadoresLink');
+                    if (trabajadoresLink) trabajadoresLink.style.display = 'none';
                 }
             } else {
                 userDropdownMenu.innerHTML = `
                     <li><a class="dropdown-item" href="sign.html">Registrarse</a></li>
                     <li><a class="dropdown-item" href="login.html">Iniciar sesión</a></li>
                 `;
-                if (adminNavItems) {
-                    adminNavItems.innerHTML = ''; // Asegurar que no haya enlaces de admin sin sesión
-                }
+                if (adminNavItems) adminNavItems.innerHTML = ''; // Asegurar que no haya enlaces de admin sin sesión
+                const trabajadoresLink = document.getElementById('trabajadoresLink');
+                if (trabajadoresLink) trabajadoresLink.style.display = 'none';
             }
         })
         .catch(error => {
@@ -72,7 +79,7 @@ function verificarSesion() {
                     window.location.href = '/login.html';
                     return;
                 }
-                if (data.user.sesion !== 1) {
+                if (data.user.sesion != 1) {
                     alert('No tienes permiso para acceder a esta página.');
                     window.location.href = '/index.html';
                     return;
