@@ -94,39 +94,49 @@ router.get('/historial', async (req, res) => {
             return res.status(401).json({ error: 'Usuario no autenticado' });
         }
 
-        const [ventas] = await pool.query(
+        const [compras] = await pool.query(
             `SELECT 
-                v.id_venta,
-                v.fecha,
-                v.cantidad,
-                v.total,
-                p.id_producto,
-                p.nombre AS nombre_producto,
-                p.precio
-            FROM venta v
-            INNER JOIN producto p ON v.id_producto = p.id_producto
-            WHERE v.id_usuario = ?
-            ORDER BY v.fecha DESC`,
+                c.id_compra,
+                c.fecha,
+                c.total,
+                c.numero_venta,
+                cd.id_producto,
+                cd.nombre_producto,
+                cd.precio_unitario,
+                cd.cantidad,
+                cd.subtotal
+            FROM compra c
+            LEFT JOIN compra_detalle cd ON c.id_compra = cd.id_compra
+            WHERE c.id_usuario = ?
+            ORDER BY c.fecha DESC`,
             [id_usuario]
         );
 
-        // Agrupar ventas por fecha (carrito)
-        const ventasAgrupadas = {};
-        ventas.forEach(venta => {
-            const fechaKey = new Date(venta.fecha).toISOString().split('T')[0];
-            if (!ventasAgrupadas[fechaKey]) {
-                ventasAgrupadas[fechaKey] = {
-                    fecha: venta.fecha,
-                    productos: [],
-                    totalCarrito: 0
+        // Agrupar compras por id_compra (cada compra puede tener múltiples productos)
+        const comprasAgrupadas = {};
+        compras.forEach(compra => {
+            if (!comprasAgrupadas[compra.id_compra]) {
+                comprasAgrupadas[compra.id_compra] = {
+                    id_compra: compra.id_compra,
+                    fecha: compra.fecha,
+                    numero_venta: compra.numero_venta,
+                    total: compra.total,
+                    productos: []
                 };
             }
-            ventasAgrupadas[fechaKey].productos.push(venta);
-            ventasAgrupadas[fechaKey].totalCarrito += parseFloat(venta.total);
+            if (compra.id_producto) {
+                comprasAgrupadas[compra.id_compra].productos.push({
+                    id_producto: compra.id_producto,
+                    nombre_producto: compra.nombre_producto,
+                    precio_unitario: compra.precio_unitario,
+                    cantidad: compra.cantidad,
+                    subtotal: compra.subtotal
+                });
+            }
         });
 
         // Convertir a array y ordenar por fecha descendente
-        const resultado = Object.values(ventasAgrupadas).sort((a, b) => 
+        const resultado = Object.values(comprasAgrupadas).sort((a, b) => 
             new Date(b.fecha) - new Date(a.fecha)
         );
 
@@ -137,7 +147,7 @@ router.get('/historial', async (req, res) => {
     }
 });
 
-// Ruta para obtener la última venta del usuario
+// Ruta para obtener la última compra del usuario
 router.get('/ultima-venta', async (req, res) => {
     try {
         const id_usuario = req.session?.user?.id_usuario;
@@ -146,62 +156,54 @@ router.get('/ultima-venta', async (req, res) => {
             return res.status(401).json({ error: 'Usuario no autenticado' });
         }
 
-        const [ventas] = await pool.query(
+        const [compras] = await pool.query(
             `SELECT 
-                v.id_venta,
-                v.fecha,
-                v.cantidad,
-                v.total,
-                p.id_producto,
-                p.nombre AS nombre_producto,
-                p.precio,
+                c.id_compra,
+                c.fecha,
+                c.total,
+                c.numero_venta,
                 u.nombre,
                 u.email
-            FROM venta v
-            INNER JOIN producto p ON v.id_producto = p.id_producto
-            INNER JOIN usuario u ON v.id_usuario = u.id_usuario
-            WHERE v.id_usuario = ?
-            ORDER BY v.fecha DESC
+            FROM compra c
+            INNER JOIN usuario u ON c.id_usuario = u.id_usuario
+            WHERE c.id_usuario = ?
+            ORDER BY c.fecha DESC
             LIMIT 1`,
             [id_usuario]
         );
 
-        if (ventas.length === 0) {
-            return res.status(404).json({ error: 'No se encontró la última venta' });
+        if (compras.length === 0) {
+            return res.status(404).json({ error: 'No se encontró la última compra' });
         }
 
-        // Obtener todos los detalles de esa venta
+        // Obtener todos los detalles de esa compra
         const [detalles] = await pool.query(
             `SELECT 
-                v.id_venta,
-                v.fecha,
-                v.cantidad,
-                v.total,
-                p.nombre AS nombre_producto,
-                p.precio
-            FROM venta v
-            INNER JOIN producto p ON v.id_producto = p.id_producto
-            WHERE v.id_usuario = ?
-            ORDER BY v.fecha DESC
-            LIMIT 1`,
-            [id_usuario]
+                cd.id_producto,
+                cd.nombre_producto,
+                cd.precio_unitario,
+                cd.cantidad,
+                cd.subtotal
+            FROM compra_detalle cd
+            WHERE cd.id_compra = ?`,
+            [compras[0].id_compra]
         );
 
         res.json({
-            ...ventas[0],
+            ...compras[0],
             detalles: detalles,
             nombre_negocio: 'La desesperanza'
         });
     } catch (error) {
-        console.error('Error al obtener última venta:', error);
-        res.status(500).json({ error: 'Error al obtener la última venta' });
+        console.error('Error al obtener última compra:', error);
+        res.status(500).json({ error: 'Error al obtener la última compra' });
     }
 });
 
-// Ruta para obtener un recibo específico por ID de venta
+// Ruta para obtener un recibo específico por ID de compra
 router.get('/recibo/:idVenta', async (req, res) => {
     try {
-        const { idVenta } = req.params;
+        const { idVenta } = req.params; // Aquí idVenta es en realidad id_compra
         const id_usuario = req.session?.user?.id_usuario;
         
         if (!id_usuario) {
@@ -210,33 +212,45 @@ router.get('/recibo/:idVenta', async (req, res) => {
 
         // Validar que el ID sea un número válido
         if (isNaN(idVenta) || idVenta <= 0) {
-            return res.status(400).json({ error: 'ID de venta inválido' });
+            return res.status(400).json({ error: 'ID de compra inválido' });
         }
 
-        // Obtener el recibo y validar que pertenece al usuario
-        const [ventas] = await pool.query(
+        // Obtener la compra y validar que pertenece al usuario
+        const [compras] = await pool.query(
             `SELECT 
-                v.id_venta,
-                v.fecha,
-                v.cantidad,
-                v.total,
-                p.nombre AS nombre_producto,
-                p.precio,
+                c.id_compra,
+                c.fecha,
+                c.total,
+                c.numero_venta,
                 u.nombre,
-                u.email
-            FROM venta v
-            INNER JOIN producto p ON v.id_producto = p.id_producto
-            INNER JOIN usuario u ON v.id_usuario = u.id_usuario
-            WHERE v.id_venta = ? AND v.id_usuario = ?`,
+                u.email,
+                u.direccion
+            FROM compra c
+            INNER JOIN usuario u ON c.id_usuario = u.id_usuario
+            WHERE c.id_compra = ? AND c.id_usuario = ?`,
             [idVenta, id_usuario]
         );
 
-        if (ventas.length === 0) {
+        if (compras.length === 0) {
             return res.status(404).json({ error: 'Recibo no encontrado' });
         }
 
+        // Obtener los detalles de la compra
+        const [detalles] = await pool.query(
+            `SELECT 
+                cd.id_producto,
+                cd.nombre_producto,
+                cd.precio_unitario,
+                cd.cantidad,
+                cd.subtotal
+            FROM compra_detalle cd
+            WHERE cd.id_compra = ?`,
+            [idVenta]
+        );
+
         res.json({
-            ...ventas[0],
+            ...compras[0],
+            detalles: detalles,
             nombre_negocio: 'La desesperanza'
         });
     } catch (error) {

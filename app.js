@@ -24,7 +24,6 @@ var con= mysql.createPool({
     waitForConnections: true,
     queueLimit: 10,
     enableKeepAlive: true,
-    keepAliveInitialDelayMs: 0,
     ssl: {
         rejectUnauthorized: false
     }
@@ -72,7 +71,7 @@ app.post('/addProducto',upload.single("imagenProducto"), function(req, res) {
     const precio = req.body.precioProducto;
     const cantidad = req.body.cantidadProducto;
 
-    if (!req.file) return res.status(400).send("Debes subir una imagen.");
+    if (!req.file) return res.status(400).json({ error: 'Debes subir una imagen.' });
     const imagen = req.file.buffer;
 
     //validaciones
@@ -82,42 +81,42 @@ app.post('/addProducto',upload.single("imagenProducto"), function(req, res) {
     const validarImagen=["image/jpeg", "image/png", "image/gif", "image/webp"];
 
     if (isNaN(precio) || precio <= 0 ) {
-        return res.status(400).send('El precio debe ser un precio válido.');
+        return res.status(400).json({ error: 'El precio debe ser un precio válido.' });
     }
     if (isNaN(cantidad) || cantidad <= 0 || !Number.isInteger(Number(cantidad))) {
-        return res.status(400).send('La cantidad debe ser una cantidad valida.');
+        return res.status(400).json({ error: 'La cantidad debe ser una cantidad valida.' });
     }
     if(!isNaN(nombre)){
-        return res.status(400).send('El nombre no puede ser un número.');
+        return res.status(400).json({ error: 'El nombre no puede ser un número.' });
     }
     if(!isNaN(descripcion)){
-        return res.status(400).send('La descripcion no puede ser un número.');
+        return res.status(400).json({ error: 'La descripcion no puede ser un número.' });
     }
 
     if (!validarCaracteresNombre.test(nombre)) {     
-        return res.status(400).send('El nombre debe tener entre 3 y 44 caracteres y no puede contener números o caracteres especiales.');
+        return res.status(400).json({ error: 'El nombre debe tener entre 3 y 44 caracteres y no puede contener números o caracteres especiales.' });
     }
 
     if (!validarCaracteresDescripcion.test(descripcion)) {
-        return res.status(400).send('La descripción debe tener entre 10 y 100 caracteres y no puede contener caracteres especiales.');
+        return res.status(400).json({ error: 'La descripción debe tener entre 10 y 100 caracteres y no puede contener caracteres especiales.' });
     }
 
     if (validarInsercion.test(nombre) || validarInsercion.test(descripcion)) {
-        return res.status(400).send('No se permiten etiquetas HTML en el nombre o la descripción.') ;
+        return res.status(400).json({ error: 'No se permiten etiquetas HTML en el nombre o la descripción.' }) ;
     }
 
     if (!validarImagen.includes(req.file.mimetype)) {
-        return res.status(400).send('El formato de la imagen no es válido. Solo se permiten jpeg, png, gif y webp.');
+        return res.status(400).json({ error: 'El formato de la imagen no es válido. Solo se permiten jpeg, png, gif y webp.' });
     }
     //validar que el nombre no exista
     con.query('SELECT nombre FROM producto WHERE nombre = ?', [nombre], function (err, result) {
         if (err) {
             console.error('Error al verificar el nombre del producto en la base de datos: ', err);
-            return res.status(500).send('Error al verificar el nombre del producto en la base de datos.');
+            return res.status(500).json({ error: 'Error al verificar el nombre del producto en la base de datos.' });
         }
         if (result.length > 0) {
             console.log('El nombre del producto ya existe. Por favor, elige otro nombre. ');
-            return res.status(400).send('El nombre del producto ya existe. Por favor, elige otro nombre.');
+            return res.status(400).json({ error: 'El nombre del producto ya existe. Por favor, elige otro nombre.' });
         }
 
         //insertar en la base de datos con activo=1 por defecto
@@ -126,10 +125,15 @@ app.post('/addProducto',upload.single("imagenProducto"), function(req, res) {
             [nombre, precio, cantidad, descripcion, imagen],
             function (err, result) {
                 if (err) {
-                    console.error('Error al insertar el producto en la base de datos: ', err);
-                    return res.status(500).send('Error al insertar el producto en la base de datos.');
+                        console.error('Error al insertar el producto en la base de datos: ', err);
+                        // Si el error es por almacenar datos binarios en una columna con charset/Tipo incorrecto,
+                        // sugerimos cambiar la columna `imagen` a LONGBLOB. No hacemos la alteración automáticamente.
+                        if (err && (err.code === 'ER_TRUNCATED_WRONG_VALUE_FOR_FIELD' || err.code === 'ER_WRONG_VALUE_FOR_TYPE')) {
+                            return res.status(500).json({ error: 'Error al guardar la imagen: la columna `imagen` probablemente no es BLOB. Ejecuta en MySQL: ALTER TABLE producto MODIFY imagen LONGBLOB;' });
+                        }
+                        return res.status(500).json({ error: 'Error al insertar el producto en la base de datos.' });
                 }
-                return res.status(200).send('Producto añadido correctamente.');
+                return res.status(200).json({ message: 'Producto añadido correctamente.' });
         });
 
     });
@@ -137,12 +141,31 @@ app.post('/addProducto',upload.single("imagenProducto"), function(req, res) {
 });
 
 app.get('/getUsuarios', function(req, res) {
-    con.query('SELECT * FROM usuario WHERE activo = 1', function (err, result) {
+    // devolver todos los usuarios (activo 1 y 0) para permitir reactivar desde el frontend
+    con.query('SELECT * FROM usuario', function (err, result) {
         if (err) {
             console.error('Error al obtener los usuarios de la base de datos: ', err);
-            return res.status(500).send('Error al obtener los usuarios de la base de datos.');
+            return res.status(500).json({ error: 'Error al obtener los usuarios de la base de datos.' });
         }
         res.json(result);
+    });
+});
+
+// Reactivar usuario (marcar activo = 1)
+app.post('/reactivarUsuario', function(req, res) {
+    const id_usuario = parseInt(req.body.id_usuario);
+    if (isNaN(id_usuario) || id_usuario <= 0) {
+        return res.status(400).send("<script>alert('ID inválido'); history.back();</script>");
+    }
+    con.query('UPDATE usuario SET activo = 1 WHERE id_usuario = ?', [id_usuario], function(err, result) {
+        if (err) {
+            console.error('Error al reactivar el usuario:', err);
+            return res.status(500).send("<script>alert('Error al reactivar el usuario.'); history.back();</script>");
+        }
+        if (result.affectedRows === 0) {
+            return res.status(404).send("<script>alert('Usuario no encontrado.'); history.back();</script>");
+        }
+        res.status(200).send("<script>alert('Usuario reactivado correctamente.'); location.reload();</script>");
     });
 });
 
@@ -150,7 +173,7 @@ app.get('/getProductos', function(req, res) {
     con.query('SELECT * FROM producto WHERE activo = 1', function (err, result) {
         if (err) {
             console.error('Error al obtener los productos de la base de datos: ', err);
-            return res.status(500).send('Error al obtener los productos de la base de datos.');
+            return res.status(500).json({ error: 'Error al obtener los productos de la base de datos.' });
         }
         
 
@@ -168,32 +191,36 @@ app.post('/deleteUsuario', function(req, res) {
     const id_usuario = parseInt(req.body.id_usuario);
 
     if (isNaN(id_usuario) || id_usuario <= 0) {
-        return res.status(400).json({ error: 'ID inválido' });
+        return res.status(400).send("<script>alert('ID inválido'); history.back();</script>");
     }
 
     // Marcar como inactivo en lugar de eliminar
     con.query('UPDATE usuario SET activo = 0 WHERE id_usuario = ?', [id_usuario], function(err, result) {
-        if (err) return res.status(500).json({ error: 'Error al eliminar el usuario.' });
-        if (result.affectedRows === 0) return res.status(404).json({ error: 'Usuario no encontrado.' });
-        res.status(200).json({ message: 'Usuario eliminado correctamente.' });
+        if (err) {
+            return res.status(500).send("<script>alert('Error al eliminar el usuario.'); history.back();</script>");
+        }
+        if (result.affectedRows === 0) {
+            return res.status(404).send("<script>alert('Usuario no encontrado.'); history.back();</script>");
+        }
+        res.status(200).send("<script>alert('Usuario eliminado correctamente.'); location.reload();</script>");
     });
 });
 
 app.post('/deleteProducto', function(req, res) {
     const id_producto = parseInt(req.body.id_producto);
     if (isNaN(id_producto) || id_producto <= 0 || !Number.isInteger(Number(id_producto))) {
-        return res.status(400).json({ error: 'El ID del producto debe ser un número entero positivo.' });
+        return res.status(400).send("<script>alert('El ID del producto debe ser un número entero positivo.'); history.back();</script>");
     }
     // Marcar como inactivo en lugar de eliminar
     con.query('UPDATE producto SET activo = 0 WHERE id_producto = ?', [id_producto], function (err, result) {
         if (err) {
             console.error('Error al eliminar el producto de la base de datos: ', err);
-            return res.status(500).json({ error: 'Error al eliminar el producto de la base de datos.' });
+            return res.status(500).send("<script>alert('Error al eliminar el producto de la base de datos.'); history.back();</script>");
         }
         if (result.affectedRows === 0) {
-            return res.status(404).json({ error: 'Producto no encontrado.' });
+            return res.status(404).send("<script>alert('Producto no encontrado.'); history.back();</script>");
         }
-        res.status(200).json({ message: 'Producto eliminado correctamente.' });
+        res.status(200).send("<script>alert('Producto eliminado correctamente.'); location.reload();</script>");
     });
 });
 
@@ -204,7 +231,7 @@ app.post('/updateProducto', upload.single("imagenProducto"), function(req, res) 
     const precio = req.body.precioProducto;
     const cantidad = req.body.cantidadProducto;
 
-    if (!req.file) return res.status(400).send("Debes subir una imagen.");
+    if (!req.file) return res.status(400).json({ error: 'Debes subir una imagen.' });
     const imagen = req.file.buffer;
 
     //validaciones
@@ -214,43 +241,43 @@ app.post('/updateProducto', upload.single("imagenProducto"), function(req, res) 
     const validarImagen=["image/jpeg", "image/png", "image/gif", "image/webp"];
 
     if (isNaN(precio) || precio <= 0 ) {
-        return res.status(400).send('El precio debe ser un precio válido.');
+        return res.status(400).json({ error: 'El precio debe ser un precio válido.' });
     }
     if (isNaN(cantidad) || cantidad <= 0 || !Number.isInteger(Number(cantidad))) {
-        return res.status(400).send('La cantidad debe ser una cantidad valida.');
+        return res.status(400).json({ error: 'La cantidad debe ser una cantidad valida.' });
     }
     if(!isNaN(nombre)){
-        return res.status(400).send('El nombre no puede ser un número.');
+        return res.status(400).json({ error: 'El nombre no puede ser un número.' });
     }
     if(!isNaN(descripcion)){
-        return res.status(400).send('La descripcion no puede ser un número.');
+        return res.status(400).json({ error: 'La descripcion no puede ser un número.' });
     }
 
     if (!validarCaracteresNombre.test(nombre)) {     
-        return res.status(400).send('El nombre debe tener entre 3 y 44 caracteres y no puede contener números o caracteres especiales.');
+        return res.status(400).json({ error: 'El nombre debe tener entre 3 y 44 caracteres y no puede contener números o caracteres especiales.' });
     }
 
     if (!validarCaracteresDescripcion.test(descripcion)) {
-        return res.status(400).send('La descripción debe tener entre 10 y 100 caracteres y no puede contener caracteres especiales.');
+        return res.status(400).json({ error: 'La descripción debe tener entre 10 y 100 caracteres y no puede contener caracteres especiales.' });
     }
 
     if (validarInsercion.test(nombre) || validarInsercion.test(descripcion)) {
-        return res.status(400).send('No se permiten etiquetas HTML en el nombre o la descripción.') ;
+        return res.status(400).json({ error: 'No se permiten etiquetas HTML en el nombre o la descripción.' }) ;
     }
 
     if (!validarImagen.includes(req.file.mimetype)) {
-        return res.status(400).send('El formato de la imagen no es válido. Solo se permiten jpeg, png, gif y webp.');
+        return res.status(400).json({ error: 'El formato de la imagen no es válido. Solo se permiten jpeg, png, gif y webp.' });
     }
 
     //validar que el nombre no exista
     con.query('SELECT nombre FROM producto WHERE nombre = ?', [nombre], function (err, result) {
         if (err) {
             console.error('Error al verificar el nombre del producto en la base de datos: ', err);
-            return res.status(500).send('Error al verificar el nombre del producto en la base de datos.');
+            return res.status(500).json({ error: 'Error al verificar el nombre del producto en la base de datos.' });
         }
         if (result.length > 0) {
             console.log('El nombre del producto ya existe. Por favor, elige otro nombre. ');
-            return res.status(400).send('El nombre del producto ya existe. Por favor, elige otro nombre.');
+            return res.status(400).json({ error: 'El nombre del producto ya existe. Por favor, elige otro nombre.' });
         }
         //insertar en la base de datos
         con.query(
@@ -259,12 +286,12 @@ app.post('/updateProducto', upload.single("imagenProducto"), function(req, res) 
             function (err, result) {
                 if (err) {
                     console.error('Error al actualizar el producto en la base de datos: ', err);
-                    return res.status(500).send('Error al actualizar el producto en la base de datos.');
+                    return res.status(500).json({ error: 'Error al actualizar el producto en la base de datos.' });
                 }
                 if (result.affectedRows === 0) {
-                    return res.status(404).send('Producto no encontrado.');
+                    return res.status(404).json({ error: 'Producto no encontrado.' });
                 }
-                res.status(200).send('Producto actualizado correctamente.');
+                res.status(200).json({ message: 'Producto actualizado correctamente.' });
         });
     
     });
@@ -295,7 +322,7 @@ app.get('/getVentas', (req, res) => {
     con.query(query, (err, results) => {
         if (err) {
         console.error('Error al obtener las ventas:', err);
-        return res.status(500).send('Error en el servidor');
+        return res.status(500).json({ error: 'Error en el servidor' });
         }
         res.json(results);
     });
@@ -315,46 +342,46 @@ app.post('/addUsuario', upload.none(), function(req, res) {
     //validaciones
     let validarEmail=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;    
     if(!validarEmail.test(email)){
-        return  res.status(400).send('El correo electrónico no es válido.');
+        return  res.status(400).json({ error: 'El correo electrónico no es válido.' });
     }
 
     if(password.length<8 || password.length>20){
-        return res.status(400).send('La contraseña debe tener entre 8 y 20 caracteres.');
+        return res.status(400).json({ error: 'La contraseña debe tener entre 8 y 20 caracteres.' });
     }
 
     if(!isNaN(nombre) || !isNaN(apellido_p) || !isNaN(apellido_m)){
-        return res.status(400).send('El nombre y apellidos no pueden ser números.');
+        return res.status(400).json({ error: 'El nombre y apellidos no pueden ser números.' });
     }
 
     if(password.includes(" ")){
-        return res.status(400).send('La contraseña no puede contener espacios.');
+        return res.status(400).json({ error: 'La contraseña no puede contener espacios.' });
     }
 
     const sesionStr = String(sesion);
     if(sesionStr !== "0" && sesionStr !== "1"){
-        return res.status(400).send('El tipo de usuario no es válido.');
+        return res.status(400).json({ error: 'El tipo de usuario no es válido.' });
     }
 
     if(nombre.length<3 || nombre.length>30){
-        return res.status(400).send('El nombre debe tener entre 3 y 30 caracteres.');
+        return res.status(400).json({ error: 'El nombre debe tener entre 3 y 30 caracteres.' });
     }
 
     if(apellido_p.length<3 || apellido_p.length>30){
-        return res.status(400).send('El apellido paterno debe tener entre 3 y 30 caracteres.');
+        return res.status(400).json({ error: 'El apellido paterno debe tener entre 3 y 30 caracteres.' });
     }
 
     if(apellido_m.length<3 || apellido_m.length>30){
-        return res.status(400).send('El apellido materno debe tener entre 3 y 30 caracteres.');
+        return res.status(400).json({ error: 'El apellido materno debe tener entre 3 y 30 caracteres.' });
     }
     //validar que el email no exista
     con.query('SELECT email FROM usuario WHERE email = ?', [email], function (err, result) {
         if (err) {
             console.error('Error al verificar el email en la base de datos: ', err);
-            return res.status(500).send('Error al verificar el email en la base de datos.');
+            return res.status(500).json({ error: 'Error al verificar el email en la base de datos.' });
         }
         if (result.length > 0) {
             console.log('El correo electrónico ya está registrado. Por favor, utiliza otro correo.');
-            return res.status(400).send('El correo electrónico ya está registrado. Por favor, utiliza otro correo.');
+            return res.status(400).json({ error: 'El correo electrónico ya está registrado. Por favor, utiliza otro correo.' });
         }
     });
         //insertar en la base de datos
@@ -365,9 +392,9 @@ app.post('/addUsuario', upload.none(), function(req, res) {
         function (err, result) {
             if (err) {
                 console.error('Error al insertar el usuario en la base de datos: ', err);
-                return res.status(500).send('Error al insertar el usuario en la base de datos.');
+                return res.status(500).json({ error: 'Error al insertar el usuario en la base de datos.' });
             }
-            return res.status(200).send('Usuario añadido correctamente.');
+            return res.status(200).json({ message: 'Usuario añadido correctamente.' });
     });
 
 
@@ -379,29 +406,41 @@ app.post('/login', upload.none(), function(req, res) {
     const email = req.body.email;
     const password = req.body.password;
 
-    con.query(
-        'SELECT * FROM usuario WHERE email = ? AND contrasena = ?',
-        [email, password],
-        function(err, result) {
-            if (err) {
-                console.error('Error al verificar las credenciales:', err);
-                return res.status(500).send('Error al iniciar sesión');
-            }
-            if (result.length === 0) {
-                return res.status(401).send('Correo o contraseña incorrectos');
-            }
-            console.log('Usuario autenticado:', result[0].sesion);
-            // Guardar datos del usuario en la sesión
-            req.session.user = {
-                id_usuario: result[0].id_usuario,
-                email: result[0].email,
-                nombre: result[0].nombre,
-                sesion: result[0].sesion // 0 para cliente, 1 para trabajador
-            };
-         
-            res.redirect('/index.html');
+    // Buscar el usuario por email primero para poder comprobar el estado 'activo'
+    con.query('SELECT * FROM usuario WHERE email = ?', [email], function(err, result) {
+        if (err) {
+            console.error('Error al verificar las credenciales:', err);
+            return res.status(500).json({ error: 'Error al iniciar sesión' });
         }
-    );
+
+        if (result.length === 0) {
+            return res.status(401).json({ error: 'Correo o contraseña incorrectos' });
+        }
+
+        const usuario = result[0];
+
+        // Si la cuenta está inactiva, mostrar alerta y redirigir al formulario de login
+        if (usuario.activo === 0 || usuario.activo === '0') {
+            return res.status(403).send("<script>alert('cuenta desactiivada por uno de nuestros moderadores'); window.location = '/login.html';</script>");
+        }
+
+        // Verificar contraseña
+        if (usuario.contrasena !== password) {
+            return res.status(401).json({ error: 'Correo o contraseña incorrectos' });
+        }
+
+        console.log('Usuario autenticado:', usuario.sesion);
+
+        // Guardar datos del usuario en la sesión
+        req.session.user = {
+            id_usuario: usuario.id_usuario,
+            email: usuario.email,
+            nombre: usuario.nombre,
+            sesion: usuario.sesion // 0 para cliente, 1 para trabajador
+        };
+
+        res.redirect('/index.html');
+    });
 });
 
 // Middleware para verificar si es trabajador
@@ -409,7 +448,7 @@ function esTrabajador(req, res, next) {
     if (req.session.user && req.session.user.sesion == 1) {
         next();
     } else {
-        res.status(403).send('No tienes acceso a esta sección. Solo trabajadores pueden acceder.');
+        res.status(403).json({ error: 'No tienes acceso a esta sección. Solo trabajadores pueden acceder.' });
     }
 }
 
@@ -433,7 +472,9 @@ app.use(['/trabajores.html', '/añadir.html', '/editar.html'], function(req, res
         if (req.xhr || req.headers.accept.includes('application/json')) {
             return res.status(403).json({ error: 'Acceso denegado' });
         }
-        return res.status(403).sendFile(__dirname + '/public/error-acceso.html');
+        // Para peticiones de navegador normales devolvemos un pequeño HTML que muestra
+        // la misma descripción del error en un alert y redirige al índice.
+        return res.status(403).send("<script>alert('No tienes permiso para acceder a esta página.'); window.location = '/index.html';</script>");
     }
 
     next();
@@ -646,12 +687,16 @@ app.get('/getAllProductos', function(req, res) {
 app.post('/reactivarProducto', function(req, res) {
     const id_producto = parseInt(req.body.id_producto);
     if (isNaN(id_producto) || id_producto <= 0) {
-        return res.status(400).json({ error: 'ID inválido' });
+        return res.status(400).send("<script>alert('ID inválido'); history.back();</script>");
     }
     con.query('UPDATE producto SET activo = 1 WHERE id_producto = ?', [id_producto], function(err, result) {
-        if (err) return res.status(500).json({ error: 'Error al reactivar el producto.' });
-        if (result.affectedRows === 0) return res.status(404).json({ error: 'Producto no encontrado.' });
-        res.status(200).json({ message: 'Producto reactivado correctamente.' });
+        if (err) {
+            return res.status(500).send("<script>alert('Error al reactivar el producto.'); history.back();</script>");
+        }
+        if (result.affectedRows === 0) {
+            return res.status(404).send("<script>alert('Producto no encontrado.'); history.back();</script>");
+        }
+        res.status(200).send("<script>alert('Producto reactivado correctamente.'); location.reload();</script>");
     });
 });
 
@@ -660,12 +705,16 @@ app.post('/updateStock', function(req, res) {
     const id_producto = parseInt(req.body.id_producto);
     const stock = parseInt(req.body.stock);
     if (isNaN(id_producto) || id_producto <= 0 || isNaN(stock) || stock < 0) {
-        return res.status(400).json({ error: 'Datos inválidos' });
+        return res.status(400).send("<script>alert('Datos inválidos'); history.back();</script>");
     }
     con.query('UPDATE producto SET stock = ? WHERE id_producto = ?', [stock, id_producto], function(err, result) {
-        if (err) return res.status(500).json({ error: 'Error al actualizar el stock.' });
-        if (result.affectedRows === 0) return res.status(404).json({ error: 'Producto no encontrado.' });
-        res.status(200).json({ message: 'Stock actualizado correctamente.' });
+        if (err) {
+            return res.status(500).send("<script>alert('Error al actualizar el stock.'); history.back();</script>");
+        }
+        if (result.affectedRows === 0) {
+            return res.status(404).send("<script>alert('Producto no encontrado.'); history.back();</script>");
+        }
+        res.status(200).send("<script>alert('Stock actualizado correctamente.'); location.reload();</script>");
     });
 });
 //conexion mysql

@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const params = new URLSearchParams(window.location.search);
     const ventaId = params.get('venta');
 
-    if (!ventaId || ventaId === 'N/A') {
+    if (!ventaId || ventaId == 'N/A') {
         fetch('/checkSession')
             .then(response => response.json())
             .then(data => {
@@ -95,25 +95,32 @@ function generarRecibo(venta) {
                         <tbody>
     `;
 
+    let computedTotal = 0;
     if (venta.detalles && Array.isArray(venta.detalles)) {
         venta.detalles.forEach(item => {
-            const subtotal = item.cantidad * item.precio;
+            const precioNum = Number(item.precio ?? item.precio_unitario ?? item.price) || 0;
+            const cantidadNum = Number(item.cantidad ?? item.qty ?? item.quantity) || 0;
+            const subtotal = precioNum * cantidadNum;
+            computedTotal += subtotal;
             html += `
                 <tr>
-                    <td>${item.nombre_producto}</td>
-                    <td class="text-center">${item.cantidad}</td>
-                    <td class="text-end">$${parseFloat(item.precio).toFixed(2)}</td>
+                    <td>${item.nombre_producto ?? item.nombre ?? ''}</td>
+                    <td class="text-center">${cantidadNum}</td>
+                    <td class="text-end">$${precioNum.toFixed(2)}</td>
                     <td class="text-end">$${subtotal.toFixed(2)}</td>
                 </tr>
             `;
         });
     } else if (venta.nombre_producto) {
-        const subtotal = venta.cantidad * venta.precio;
+        const precioNum = Number(venta.precio ?? venta.precio_unitario ?? venta.price) || 0;
+        const cantidadNum = Number(venta.cantidad ?? venta.qty ?? venta.quantity) || 0;
+        const subtotal = precioNum * cantidadNum;
+        computedTotal += subtotal;
         html += `
             <tr>
                 <td>${venta.nombre_producto}</td>
-                <td class="text-center">${venta.cantidad}</td>
-                <td class="text-end">$${parseFloat(venta.precio).toFixed(2)}</td>
+                <td class="text-center">${cantidadNum}</td>
+                <td class="text-end">$${precioNum.toFixed(2)}</td>
                 <td class="text-end">$${subtotal.toFixed(2)}</td>
             </tr>
         `;
@@ -130,7 +137,7 @@ function generarRecibo(venta) {
                     <div class="col-md-6 offset-md-6">
                         <div class="d-flex justify-content-between mb-2">
                             <p class="text-muted">Subtotal:</p>
-                            <p class="text-muted">$${parseFloat(venta.total || 0).toFixed(2)}</p>
+                                <p class="text-muted">$${(Number(venta.total) || computedTotal || 0).toFixed(2)}</p>
                         </div>
                         <div class="d-flex justify-content-between mb-3">
                             <p class="text-muted">Impuestos:</p>
@@ -138,7 +145,7 @@ function generarRecibo(venta) {
                         </div>
                         <div class="d-flex justify-content-between border-top pt-3">
                             <h5 class="fw-bold">TOTAL A PAGAR:</h5>
-                            <h5 class="fw-bold text-success">$${parseFloat(venta.total || 0).toFixed(2)}</h5>
+                            <h5 class="fw-bold text-success">$${(Number(venta.total) || computedTotal || 0).toFixed(2)}</h5>
                         </div>
                     </div>
                 </div>

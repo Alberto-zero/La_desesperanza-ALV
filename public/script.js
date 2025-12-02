@@ -1,3 +1,27 @@
+// Global fetch wrapper: muestra alert() cuando la respuesta no es OK
+(function() {
+    const _fetch = window.fetch;
+    window.fetch = function(...args) {
+        return _fetch.apply(this, args).then(async res => {
+            if (!res.ok) {
+                let msg = '';
+                try {
+                    const data = await res.clone().json();
+                    msg = data.error || data.message || JSON.stringify(data);
+                } catch (e) {
+                    try {
+                        msg = await res.clone().text();
+                    } catch (e2) {
+                        msg = 'Error en la petición';
+                    }
+                }
+                if (msg) alert(msg);
+            }
+            return res;
+        });
+    };
+})();
+
 document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('catalogo')) {
         console.log("Página de catálogo detectada");
@@ -76,25 +100,36 @@ function cargarUsuarios() {
             }
 
             usuarios.forEach((usuario, index) => {
+                const estado = usuario.activo == 1 ? '<span class="badge bg-success">Activo</span>' : '<span class="badge bg-danger">Inactivo</span>';
                 tbody.innerHTML += `
                     <tr>
                         <td>${usuario.id_usuario}</td>
                         <td>${usuario.sesion}</td>
-                        <td>${usuario.nombre} ${usuario.apellido_paterno} ${usuario.apellido_materno}</td>
+                        <td>${usuario.nombre} ${usuario.apellido_paterno || ''} ${usuario.apellido_materno || ''}</td>
                         <td>${usuario.email}</td>
-                        <td>${usuario.direccion}</td>
+                        <td>${usuario.direccion || ''}</td>
+                        <td>${estado}</td>
                         <td>
-                            <button class="btn btn-sm btn-danger btn-eliminar" data-usuario="${usuario.id_usuario}">Eliminar</button>
+                            ${usuario.activo == 1
+                                ? `<button class="btn btn-sm btn-danger btn-eliminar" data-usuario="${usuario.id_usuario}">Eliminar</button>`
+                                : `<button class="btn btn-sm btn-success btn-reactivar" data-usuario="${usuario.id_usuario}">Reactivar</button>`
+                            }
                         </td>
                     </tr>
                 `;
-                
             });
+
+            // Delegar eventos
             document.querySelectorAll('.btn-eliminar').forEach(btn => {
                 btn.addEventListener('click', function() {
-                borrarUsuario(this.getAttribute('data-usuario'));
+                    borrarUsuario(this.getAttribute('data-usuario'));
+                });
             });
-        });
+            document.querySelectorAll('.btn-reactivar').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    reactivarUsuario(this.getAttribute('data-usuario'));
+                });
+            });
         })
         .catch(err => {
             console.error(err);
@@ -207,7 +242,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.href = '/carrito-compras.html';
         });
     }
-}, { once: true });
+});
 
 function mostrarCatalogo() {
     fetch('/getProductos')
@@ -308,5 +343,27 @@ function mostrarProductos() {
     }).catch(err => {
         console.error(err);
         document.getElementById('tablaProductos').innerHTML = '<p class="text-danger">Error al cargar productos.</p>';
+    });
+}
+
+function reactivarUsuario(id) {
+    if (!confirm('¿Deseas reactivar este usuario?')) return;
+    fetch('/reactivarUsuario', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_usuario: parseInt(id) })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.error) {
+            alert(data.error);
+        } else {
+            alert(data.message);
+            cargarUsuarios();
+        }
+    })
+    .catch(err => {
+        console.error('Error al reactivar el usuario:', err);
+        alert('Error al reactivar el usuario.');
     });
 }

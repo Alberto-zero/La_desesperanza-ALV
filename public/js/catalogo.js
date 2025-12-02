@@ -17,7 +17,7 @@ function mostrarInventario(productos) {
     const tbody = document.querySelector('#tablaProductos tbody');
     tbody.innerHTML = '';
 
-    if (productos.length === 0) {
+    if (productos.length == 0) {
         tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No hay productos registrados.</td></tr>';
         return;
     }

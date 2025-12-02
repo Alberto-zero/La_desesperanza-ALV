@@ -27,7 +27,7 @@ function obtenerHistorial() {
             return response.json();
         })
         .then(data => {
-            if (data.error || !data || data.length === 0) {
+            if (data.error || !data || data.length == 0) {
                 document.getElementById('historialContent').innerHTML = `
                     <div class="alert alert-info">
                         <p><i class="bi bi-inbox"></i> No tienes compras registradas.</p>
@@ -58,8 +58,16 @@ function mostrarHistorial(compras) {
     compras.forEach((carrito, index) => {
         const fecha = new Date(carrito.fecha).toLocaleDateString('es-MX');
         const hora = new Date(carrito.fecha).toLocaleTimeString('es-MX');
-        
-        totalGeneralCompras += carrito.totalCarrito;
+
+        // Asegurar que totalCarrito esté definido y sea número. Si no, calcularlo desde los productos.
+        const computedTotal = (Array.isArray(carrito.productos) ? carrito.productos.reduce((s, p) => {
+            const precio = Number(p.precio ?? p.precio_unitario ?? p.price) || 0;
+            const cantidad = Number(p.cantidad ?? p.qty ?? p.quantity) || 0;
+            return s + precio * cantidad;
+        }, 0) : 0);
+        const totalCarritoNum = Number(carrito.totalCarrito ?? computedTotal) || computedTotal;
+
+        totalGeneralCompras += totalCarritoNum;
 
         html += `
             <div class="card mb-4 shadow-sm">
@@ -71,8 +79,8 @@ function mostrarHistorial(compras) {
                         <small class="text-muted">${fecha} - ${hora}</small>
                     </div>
                     <div class="text-end">
-                        <h5 class="mb-0 text-success">$${carrito.totalCarrito.toFixed(2)}</h5>
-                        <small class="text-muted">${carrito.productos.length} producto(s)</small>
+                        <h5 class="mb-0 text-success">$${totalCarritoNum.toFixed(2)}</h5>
+                        <small class="text-muted">${(carrito.productos||[]).length} producto(s)</small>
                     </div>
                 </div>
                 <div class="card-body">
@@ -89,13 +97,16 @@ function mostrarHistorial(compras) {
                             <tbody>
         `;
 
-        carrito.productos.forEach(producto => {
+        (carrito.productos||[]).forEach(producto => {
+            const precioNum = Number(producto.precio ?? producto.precio_unitario ?? producto.price) || 0;
+            const cantidadNum = Number(producto.cantidad ?? producto.qty ?? producto.quantity) || 0;
+            const totalNum = Number(producto.total ?? (precioNum * cantidadNum)) || (precioNum * cantidadNum);
             html += `
                 <tr>
-                    <td>${producto.nombre_producto}</td>
-                    <td class="text-center">${producto.cantidad}</td>
-                    <td class="text-end">$${parseFloat(producto.precio).toFixed(2)}</td>
-                    <td class="text-end"><strong>$${parseFloat(producto.total).toFixed(2)}</strong></td>
+                    <td>${producto.nombre_producto ?? producto.nombre ?? ''}</td>
+                    <td class="text-center">${cantidadNum}</td>
+                    <td class="text-end">$${precioNum.toFixed(2)}</td>
+                    <td class="text-end"><strong>$${totalNum.toFixed(2)}</strong></td>
                 </tr>
             `;
         });
@@ -106,7 +117,7 @@ function mostrarHistorial(compras) {
                     </div>
                 </div>
                 <div class="card-footer bg-light d-flex justify-content-between align-items-center">
-                    <small class="text-muted">ID de venta: ${carrito.productos[0].id_venta}</small>
+                    <small class="text-muted">ID de venta: ${((carrito.productos||[])[0] && ((carrito.productos||[])[0].id_venta || (carrito.productos||[])[0].id_compra)) || 'N/A'}</small>
                     <div>
                         <button class="btn btn-sm btn-primary" onclick="verRecibosCarrito('${fecha}', ${index})">
                             <i class="bi bi-receipt"></i> Ver recibos
@@ -128,7 +139,7 @@ function mostrarHistorial(compras) {
                         <hr>
                         <p class="text-muted">Total de carritos: <strong>${compras.length}</strong></p>
                         <p class="text-muted">Total de productos: <strong>${compras.reduce((sum, c) => sum + c.productos.length, 0)}</strong></p>
-                        <p class="text-muted">Total invertido: <strong class="text-success">$${totalGeneralCompras.toFixed(2)}</strong></p>
+                        <p class="text-muted">Total invertido: <strong class="text-success">$${(Number(totalGeneralCompras) || 0).toFixed(2)}</strong></p>
                     </div>
                 </div>
             </div>
@@ -161,13 +172,19 @@ function mostrarModalRecibosCarrito(carrito, fecha) {
     const horaFormato = new Date(carrito.fecha).toLocaleTimeString('es-MX');
 
     let productosHtml = '';
-    carrito.productos.forEach(producto => {
+    // Normalizar productos para evitar errores con toFixed
+    let computedTotal = 0;
+    (carrito.productos || []).forEach(producto => {
+        const precioNum = Number(producto.precio ?? producto.precio_unitario ?? producto.price) || 0;
+        const cantidadNum = Number(producto.cantidad ?? producto.qty ?? producto.quantity) || 0;
+        const totalNum = Number(producto.total ?? (precioNum * cantidadNum)) || (precioNum * cantidadNum);
+        computedTotal += totalNum;
         productosHtml += `
             <tr>
-                <td>${producto.nombre_producto}</td>
-                <td class="text-center">${producto.cantidad}</td>
-                <td class="text-end">$${parseFloat(producto.precio).toFixed(2)}</td>
-                <td class="text-end"><strong>$${parseFloat(producto.total).toFixed(2)}</strong></td>
+                <td>${producto.nombre_producto ?? producto.nombre ?? ''}</td>
+                <td class="text-center">${cantidadNum}</td>
+                <td class="text-end">$${precioNum.toFixed(2)}</td>
+                <td class="text-end"><strong>$${totalNum.toFixed(2)}</strong></td>
             </tr>
         `;
     });
@@ -224,7 +241,7 @@ function mostrarModalRecibosCarrito(carrito, fecha) {
 
                                 <div class="text-end">
                                     <p class="text-muted small mb-1">Total del carrito:</p>
-                                    <h5 class="fw-bold text-success">$${carrito.totalCarrito.toFixed(2)}</h5>
+                                    <h5 class="fw-bold text-success">$${(Number(carrito.totalCarrito) || computedTotal || 0).toFixed(2)}</h5>
                                 </div>
 
                                 <hr class="my-3">

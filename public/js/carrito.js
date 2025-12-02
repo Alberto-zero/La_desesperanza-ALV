@@ -20,7 +20,7 @@ class CarritoManager {
         .then(response => response.json())
         .then(data => {
             if (data.authenticated) {
-                const itemExistente = this.carrito.find(item => item.id === producto.id_producto);
+                const itemExistente = this.carrito.find(item => item.id == producto.id_producto);
         
                 if (itemExistente) {
                     itemExistente.cantidad += cantidad;
@@ -107,10 +107,10 @@ class CarritoManager {
         const cookies = document.cookie.split(';');
         for (let i = 0; i < cookies.length; i++) {
             let cookie = cookies[i];
-            while (cookie.charAt(0) === ' ') {
+            while (cookie.charAt(0) == ' ') {
                 cookie = cookie.substring(1);
             }
-            if (cookie.indexOf(cookieName) === 0) {
+            if (cookie.indexOf(cookieName) == 0) {
                 return cookie.substring(cookieName.length, cookie.length);
             }
         }
@@ -126,7 +126,7 @@ class CarritoManager {
             return;
         }
 
-        const item = this.carrito.find(item => item.id === idProducto);
+        const item = this.carrito.find(item => item.id == idProducto);
         if (item) {
             item.cantidad = cantidad;
             this.guardarCarrito();
