@@ -75,7 +75,7 @@ function actualizarStock(id_producto, nuevoStock) {
         mostrarMensaje(data.message || 'Stock actualizado', 'success');
     })
     .catch(err => {
-        console.error(err);
+        console.log(err);
         mostrarMensaje('Error al actualizar stock', 'danger');
         cargarInventario();
     });
@@ -95,7 +95,7 @@ function reactivarProducto(id_producto) {
         cargarInventario();
     })
     .catch(err => {
-        console.error(err);
+        console.log(err);
         mostrarMensaje('Error al reactivar producto', 'danger');
     });
 }
@@ -114,7 +114,7 @@ function eliminarProducto(id_producto) {
         cargarInventario();
     })
     .catch(err => {
-        console.error(err);
+        console.log(err);
         mostrarMensaje('Error al eliminar producto', 'danger');
     });
 }

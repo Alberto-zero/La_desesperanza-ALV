@@ -8,6 +8,7 @@
     <link rel="icon" type="images/png" href="images/logo.png">
     <script defer src="https://app.embed.im/snow.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
     <title>La desesperanza</title>
 </head>
 <body class="inicio">
@@ -74,6 +75,75 @@
 
             </div>
         </section>
+
+        <!-- Sección de Gráficas -->
+        <section id="graficas" class="my-5">
+            <div class="container">
+                <h2 class="text-center fw-bold mb-5">Análisis de Ventas y Usuarios</h2>
+
+                <!-- Fila 1: Productos más vendidos y Usuarios que más han comprado -->
+                <div class="row mb-5">
+                    <!-- Gráfica 1: Productos más vendidos -->
+                    <div class="col-lg-6 mb-4">
+                        <div class="card shadow">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0">Productos Más Vendidos</h5>
+                            </div>
+                            <div class="card-body">
+                                <div style="position: relative; height: 300px;">
+                                    <canvas id="chartProductosMasVendidos"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Gráfica 2: Usuarios que más han comprado -->
+                    <div class="col-lg-6 mb-4">
+                        <div class="card shadow">
+                            <div class="card-header bg-success text-white">
+                                <h5 class="mb-0">Usuarios que Más Han Comprado</h5>
+                            </div>
+                            <div class="card-body">
+                                <div style="position: relative; height: 300px;">
+                                    <canvas id="chartUsuariosTopCompras"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fila 2: Ingresos semanales y Distribución de categorías -->
+                <div class="row">
+                    <!-- Gráfica 3: Ingresos Semanales -->
+                    <div class="col-lg-6 mb-4">
+                        <div class="card shadow">
+                            <div class="card-header bg-info text-white">
+                                <h5 class="mb-0">Ingresos Semanales</h5>
+                            </div>
+                            <div class="card-body">
+                                <div style="position: relative; height: 300px;">
+                                    <canvas id="chartIngresosSemanales"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Gráfica 4: Distribución de categorías de productos -->
+                    <div class="col-lg-6 mb-4">
+                        <div class="card shadow">
+                            <div class="card-header bg-warning text-dark">
+                                <h5 class="mb-0">Distribución de Categorías</h5>
+                            </div>
+                            <div class="card-body">
+                                <div style="position: relative; height: 300px;">
+                                    <canvas id="chartDistribucionCategorias"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
     </main>
 
     <footer class="container-fluid bg-dark text-light text-center p-3">
@@ -81,8 +151,10 @@
     </footer>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/server-alerts.js"></script>
     <script src="script.js"></script>
     <script src="js/auth.js"></script>
+    <script src="js/graficas-trabajadores.js"></script>
 </body>
 
 </html>

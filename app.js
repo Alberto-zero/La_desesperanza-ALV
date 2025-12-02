@@ -33,6 +33,49 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 
+app.use((req, res, next) => {
+    const originalJson = res.json;
+    const originalSend = res.send;
+
+    res.json = function (body) {
+        try {
+            if (body && typeof body == 'object') {
+                if (!body.alert) {
+                    if (typeof body.message == 'string' && body.message.trim() !='') {
+                        body.alert = body.message;
+                    } else if (typeof body.error == 'string' && body.error.trim() != '') {
+                        body.alert = body.error;
+                    }
+                }
+            }
+        } catch (e) {
+            // If anything goes wrong, ignore and continue
+            console.error('Error al añadir alert a res.json:', e);
+        }
+        return originalJson.call(this, body);
+    };
+
+    res.send = function (body) {
+        try {
+            if (body && typeof body === 'object' && !Buffer.isBuffer(body)) {
+                if (!body.alert) {
+                    if (typeof body.message === 'string' && body.message.trim() !== '') {
+                        body.alert = body.message;
+                    } else if (typeof body.error === 'string' && body.error.trim() !== '') {
+                        body.alert = body.error;
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Error al añadir alert a res.send:', e);
+        }
+        return originalSend.call(this, body);
+    };
+
+    next();
+});
+
+
 const sessionStore = new MySQLStore({}, con)
 
 app.use(session({
@@ -81,32 +124,32 @@ app.post('/addProducto',upload.single("imagenProducto"), function(req, res) {
     const validarImagen=["image/jpeg", "image/png", "image/gif", "image/webp"];
 
     if (isNaN(precio) || precio <= 0 ) {
-        return res.status(400).json({ error: 'El precio debe ser un precio válido.' });
+        return res.status(400).json({ message: 'El precio debe ser un precio válido.' });
     }
     if (isNaN(cantidad) || cantidad <= 0 || !Number.isInteger(Number(cantidad))) {
-        return res.status(400).json({ error: 'La cantidad debe ser una cantidad valida.' });
+        return res.status(400).json({ message: 'La cantidad debe ser una cantidad valida.' });
     }
     if(!isNaN(nombre)){
-        return res.status(400).json({ error: 'El nombre no puede ser un número.' });
+        return res.status(400).json({ message: 'El nombre no puede ser un número.' });
     }
     if(!isNaN(descripcion)){
-        return res.status(400).json({ error: 'La descripcion no puede ser un número.' });
+        return res.status(400).json({ message: 'La descripcion no puede ser un número.' });
     }
 
     if (!validarCaracteresNombre.test(nombre)) {     
-        return res.status(400).json({ error: 'El nombre debe tener entre 3 y 44 caracteres y no puede contener números o caracteres especiales.' });
+        return res.status(400).json({ message: 'El nombre debe tener entre 3 y 44 caracteres y no puede contener números o caracteres especiales.' });
     }
 
     if (!validarCaracteresDescripcion.test(descripcion)) {
-        return res.status(400).json({ error: 'La descripción debe tener entre 10 y 100 caracteres y no puede contener caracteres especiales.' });
+        return res.status(400).json({ message: 'La descripción debe tener entre 10 y 100 caracteres y no puede contener caracteres especiales.' });
     }
 
     if (validarInsercion.test(nombre) || validarInsercion.test(descripcion)) {
-        return res.status(400).json({ error: 'No se permiten etiquetas HTML en el nombre o la descripción.' }) ;
+        return res.status(400).json({ message: 'No se permiten etiquetas HTML en el nombre o la descripción.' }) ;
     }
 
     if (!validarImagen.includes(req.file.mimetype)) {
-        return res.status(400).json({ error: 'El formato de la imagen no es válido. Solo se permiten jpeg, png, gif y webp.' });
+        return res.status(400).json({ message: 'El formato de la imagen no es válido. Solo se permiten jpeg, png, gif y webp.' });
     }
     //validar que el nombre no exista
     con.query('SELECT nombre FROM producto WHERE nombre = ?', [nombre], function (err, result) {
@@ -116,7 +159,7 @@ app.post('/addProducto',upload.single("imagenProducto"), function(req, res) {
         }
         if (result.length > 0) {
             console.log('El nombre del producto ya existe. Por favor, elige otro nombre. ');
-            return res.status(400).json({ error: 'El nombre del producto ya existe. Por favor, elige otro nombre.' });
+            return res.status(400).json({ message: 'El nombre del producto ya existe. Por favor, elige otro nombre.' });
         }
 
         //insertar en la base de datos con activo=1 por defecto
@@ -129,11 +172,11 @@ app.post('/addProducto',upload.single("imagenProducto"), function(req, res) {
                         // Si el error es por almacenar datos binarios en una columna con charset/Tipo incorrecto,
                         // sugerimos cambiar la columna `imagen` a LONGBLOB. No hacemos la alteración automáticamente.
                         if (err && (err.code === 'ER_TRUNCATED_WRONG_VALUE_FOR_FIELD' || err.code === 'ER_WRONG_VALUE_FOR_TYPE')) {
-                            return res.status(500).json({ error: 'Error al guardar la imagen: la columna `imagen` probablemente no es BLOB. Ejecuta en MySQL: ALTER TABLE producto MODIFY imagen LONGBLOB;' });
+                            return res.status(500).json({ message: 'Error al guardar la imagen: la columna `imagen` probablemente no es BLOB. Ejecuta en MySQL: ALTER TABLE producto MODIFY imagen LONGBLOB;' });
                         }
-                        return res.status(500).json({ error: 'Error al insertar el producto en la base de datos.' });
+                        return res.status(500).json({ message: 'Error al insertar el producto en la base de datos.' });
                 }
-                return res.status(200).json({ message: 'Producto añadido correctamente.' });
+                return res.status(200).send({ message: 'Producto añadido correctamente.' });
         });
 
     });
@@ -202,7 +245,7 @@ app.post('/deleteUsuario', function(req, res) {
         if (result.affectedRows === 0) {
             return res.status(404).send("<script>alert('Usuario no encontrado.'); history.back();</script>");
         }
-        res.status(200).send("<script>alert('Usuario eliminado correctamente.'); location.reload();</script>");
+        res.status(200).json({ message: 'Usuario eliminado correctamente.' });
     });
 });
 
@@ -220,7 +263,7 @@ app.post('/deleteProducto', function(req, res) {
         if (result.affectedRows === 0) {
             return res.status(404).send("<script>alert('Producto no encontrado.'); history.back();</script>");
         }
-        res.status(200).send("<script>alert('Producto eliminado correctamente.'); location.reload();</script>");
+        return res.status(200).json({ message: 'Producto eliminado correctamente.' });
     });
 });
 
@@ -373,7 +416,7 @@ app.post('/addUsuario', upload.none(), function(req, res) {
     if(apellido_m.length<3 || apellido_m.length>30){
         return res.status(400).json({ error: 'El apellido materno debe tener entre 3 y 30 caracteres.' });
     }
-    //validar que el email no exista
+    // validar que el email no exista y, solo cuando esté comprobado, insertar
     con.query('SELECT email FROM usuario WHERE email = ?', [email], function (err, result) {
         if (err) {
             console.error('Error al verificar el email en la base de datos: ', err);
@@ -383,18 +426,18 @@ app.post('/addUsuario', upload.none(), function(req, res) {
             console.log('El correo electrónico ya está registrado. Por favor, utiliza otro correo.');
             return res.status(400).json({ error: 'El correo electrónico ya está registrado. Por favor, utiliza otro correo.' });
         }
-    });
-        //insertar en la base de datos
 
-    con.query(
-        'INSERT INTO usuario (sesion, nombre, apellido_paterno, apellido_materno, email, direccion, contrasena, activo) VALUES (?, ?, ?, ?, ?, ?, ?, 1)', 
-        [sesion, nombre, apellido_p, apellido_m, email, direccion, password],
-        function (err, result) {
-            if (err) {
-                console.error('Error al insertar el usuario en la base de datos: ', err);
-                return res.status(500).json({ error: 'Error al insertar el usuario en la base de datos.' });
-            }
-            return res.status(200).json({ message: 'Usuario añadido correctamente.' });
+        // insertar en la base de datos ahora que sabemos que el email no existe
+        con.query(
+            'INSERT INTO usuario (sesion, nombre, apellido_paterno, apellido_materno, email, direccion, contrasena, activo) VALUES (?, ?, ?, ?, ?, ?, ?, 1)', 
+            [sesion, nombre, apellido_p, apellido_m, email, direccion, password],
+            function (err2, resultInsert) {
+                if (err2) {
+                    console.error('Error al insertar el usuario en la base de datos: ', err2);
+                    return res.status(500).json({ error: 'Error al insertar el usuario en la base de datos.' });
+                }
+                return res.status(200).json({ message: 'Usuario añadido correctamente.' });
+        });
     });
 
 
@@ -452,7 +495,6 @@ function esTrabajador(req, res, next) {
     }
 }
 
-// Middleware para proteger archivos de trabajadores
 app.use(['/trabajores.html', '/añadir.html', '/editar.html'], function(req, res, next) {
     // Establecer headers para prevenir caché en páginas protegidas
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
@@ -480,6 +522,270 @@ app.use(['/trabajores.html', '/añadir.html', '/editar.html'], function(req, res
     next();
 });
 
+// Ruta API para obtener datos de gráficas (SIN protección)
+// Función de fallback: datos simulados cuando la BD no contiene registros
+function generarDatosSimuladosBackend() {
+    return {
+        message: 'No hay datos en la base de datos; mostrando datos simulados.',
+        productosMasVendidos: {
+            labels: ['Pan de caja', 'Pan dulce', 'Croissant', 'Baguette', 'Pastel'],
+            datos: [120, 90, 60, 45, 30]
+        },
+        usuariosTopCompras: {
+            labels: ['Juan P.', 'María L.', 'Carlos S.', 'Ana G.', 'Luis R.'],
+            datos: [10, 8, 6, 5, 4]
+        },
+        ingresosSemanales: {
+            labels: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
+            datos: [150, 200, 180, 170, 220, 240, 190]
+        },
+        distribucionCategorias: {
+            labels: ['Panes', 'Pasteles', 'Galletas', 'Bollos', 'Otros'],
+            datos: [60, 20, 10, 5, 5]
+        }
+    };
+}
+
+app.get('/api/graficas-datos', function(req, res) {
+   
+
+    // Query 1: Productos más vendidos
+    const queryProductos = `
+        SELECT p.nombre, COUNT(v.id_venta) as cantidad_vendida
+        FROM venta v
+        INNER JOIN producto p ON v.id_producto = p.id_producto
+        GROUP BY v.id_producto, p.nombre
+        ORDER BY cantidad_vendida DESC
+        LIMIT 5
+    `;
+
+    // Query 2: Usuarios que más han comprado
+    const queryUsuarios = `
+        SELECT CONCAT(u.nombre, ' ', u.apellido_paterno) as nombre_usuario, COUNT(v.id_venta) as compras_realizadas
+        FROM venta v
+        INNER JOIN usuario u ON v.id_usuario = u.id_usuario
+        GROUP BY v.id_usuario, u.nombre, u.apellido_paterno
+        ORDER BY compras_realizadas DESC
+        LIMIT 5
+    `;
+
+    // Query 3: Ingresos semanales (últimos 7 días)
+    const queryIngresos = `
+        SELECT 
+            DAYNAME(v.fecha) as dia,
+            DATE(v.fecha) as fecha_dia,
+            SUM(v.total) as ingresos_dia
+        FROM venta v
+        WHERE v.fecha >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+        GROUP BY DATE(v.fecha)
+        ORDER BY v.fecha ASC
+    `;
+
+    // Query 4: Distribución de categorías por conteo de ventas
+    const queryCategoria = `
+        SELECT 
+            CASE 
+                WHEN LOWER(p.nombre) LIKE '%pan%' THEN 'Panes'
+                WHEN LOWER(p.nombre) LIKE '%pastel%' THEN 'Pasteles'
+                WHEN LOWER(p.nombre) LIKE '%galleta%' THEN 'Galletas'
+                WHEN LOWER(p.nombre) LIKE '%bollo%' THEN 'Bollos'
+                ELSE 'Otros'
+            END as categoria,
+            COUNT(v.id_venta) as cantidad
+        FROM venta v
+        INNER JOIN producto p ON v.id_producto = p.id_producto
+        GROUP BY categoria
+        ORDER BY cantidad DESC
+    `;
+
+    // Ejecutar las 4 queries
+    con.query(queryProductos, function(err1, resultProductos) {
+        if (err1) {
+            console.error('❌ Error en queryProductos:', err1);
+            resultProductos = [];
+        } else {
+            console.log('✓ Productos encontrados:', resultProductos.length);
+        }
+
+        con.query(queryUsuarios, function(err2, resultUsuarios) {
+            if (err2) {
+                console.error('❌ Error en queryUsuarios:', err2);
+                resultUsuarios = [];
+            } else {
+                console.log('✓ Usuarios encontrados:', resultUsuarios.length);
+            }
+
+            con.query(queryIngresos, function(err3, resultIngresos) {
+                if (err3) {
+                    console.error('❌ Error en queryIngresos:', err3);
+                    resultIngresos = [];
+                } else {
+                    console.log('✓ Registros de ingresos encontrados:', resultIngresos.length);
+                }
+
+                con.query(queryCategoria, function(err4, resultCategoria) {
+                    if (err4) {
+                        console.error('❌ Error en queryCategoria:', err4);
+                        resultCategoria = [];
+                    } else {
+                        console.log('✓ Categorías encontradas:', resultCategoria.length);
+                    }
+
+                    // Procesar los resultados
+                    let datosGraficas;
+                    
+                    if (resultProductos.length === 0 && resultUsuarios.length === 0 && resultIngresos.length === 0 && resultCategoria.length === 0) {
+                        console.log('⚠️ No se encontraron filas en tablas de `venta`. Intentando tablas de `compra` como alternativa...');
+
+                        // Queries alternativas usando las tablas `compra` y `compra_detalle`
+                        const qProductosCompra = `
+                            SELECT p.nombre, SUM(cd.cantidad) as cantidad_vendida
+                            FROM compra_detalle cd
+                            INNER JOIN compra c ON cd.id_compra = c.id_compra
+                            INNER JOIN producto p ON cd.id_producto = p.id_producto
+                            GROUP BY cd.id_producto, p.nombre
+                            ORDER BY cantidad_vendida DESC
+                            LIMIT 5
+                        `;
+
+                        const qUsuariosCompra = `
+                            SELECT CONCAT(u.nombre, ' ', u.apellido_paterno) as nombre_usuario, COUNT(c.id_compra) as compras_realizadas
+                            FROM compra c
+                            INNER JOIN usuario u ON c.id_usuario = u.id_usuario
+                            GROUP BY c.id_usuario, u.nombre, u.apellido_paterno
+                            ORDER BY compras_realizadas DESC
+                            LIMIT 5
+                        `;
+
+                        const qIngresosCompra = `
+                            SELECT 
+                                DAYNAME(c.fecha) as dia,
+                                DATE(c.fecha) as fecha_dia,
+                                SUM(c.total) as ingresos_dia
+                            FROM compra c
+                            WHERE c.fecha >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                            GROUP BY DATE(c.fecha)
+                            ORDER BY c.fecha ASC
+                        `;
+
+                        const qCategoriaCompra = `
+                            SELECT 
+                                CASE 
+                                    WHEN LOWER(p.nombre) LIKE '%pan%' THEN 'Panes'
+                                    WHEN LOWER(p.nombre) LIKE '%pastel%' THEN 'Pasteles'
+                                    WHEN LOWER(p.nombre) LIKE '%galleta%' THEN 'Galletas'
+                                    WHEN LOWER(p.nombre) LIKE '%bollo%' THEN 'Bollos'
+                                    ELSE 'Otros'
+                                END as categoria,
+                                COUNT(cd.id_detalle) as cantidad
+                            FROM compra_detalle cd
+                            INNER JOIN producto p ON cd.id_producto = p.id_producto
+                            GROUP BY categoria
+                            ORDER BY cantidad DESC
+                        `;
+
+                        con.query(qProductosCompra, function(errA, resProdC) {
+                            if (errA) {
+                                console.error('❌ Error en qProductosCompra:', errA);
+                                resProdC = [];
+                            }
+
+                            con.query(qUsuariosCompra, function(errB, resUserC) {
+                                if (errB) {
+                                    console.error('❌ Error en qUsuariosCompra:', errB);
+                                    resUserC = [];
+                                }
+
+                                con.query(qIngresosCompra, function(errC, resIngresC) {
+                                    if (errC) {
+                                        console.error('❌ Error en qIngresosCompra:', errC);
+                                        resIngresC = [];
+                                    }
+
+                                    con.query(qCategoriaCompra, function(errD, resCatC) {
+                                        if (errD) {
+                                            console.error('❌ Error en qCategoriaCompra:', errD);
+                                            resCatC = [];
+                                        }
+
+                                        // Si encontramos datos en `compra`, los usamos
+                                        if ((resProdC && resProdC.length > 0) || (resUserC && resUserC.length > 0) || (resIngresC && resIngresC.length > 0) || (resCatC && resCatC.length > 0)) {
+                                            console.log('✅ Datos encontrados en tablas de compra. Enviando resultado basado en `compra`.');
+                                            datosGraficas = {
+                                                productosMasVendidos: {
+                                                    labels: resProdC.length > 0 ? resProdC.map(p => p.nombre) : ['Sin datos'],
+                                                    datos: resProdC.length > 0 ? resProdC.map(p => p.cantidad_vendida || p.cantidad_vendida) : [0]
+                                                },
+                                                usuariosTopCompras: {
+                                                    labels: resUserC.length > 0 ? resUserC.map(u => u.nombre_usuario) : ['Sin datos'],
+                                                    datos: resUserC.length > 0 ? resUserC.map(u => u.compras_realizadas) : [0]
+                                                },
+                                                ingresosSemanales: {
+                                                    labels: resIngresC.length > 0 
+                                                        ? resIngresC.map(i => {
+                                                            const fecha = new Date(i.fecha_dia);
+                                                            return fecha.toLocaleDateString('es-ES', { weekday: 'short' });
+                                                        })
+                                                        : ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sab', 'Dom'],
+                                                    datos: resIngresC.length > 0 ? resIngresC.map(i => parseFloat(i.ingresos_dia) || 0) : [0,0,0,0,0,0,0]
+                                                },
+                                                distribucionCategorias: {
+                                                    labels: resCatC.length > 0 ? resCatC.map(c => c.categoria) : ['Sin datos'],
+                                                    datos: resCatC.length > 0 ? resCatC.map(c => c.cantidad) : [0]
+                                                },
+                                                
+                                            };
+                                        } else {
+                                            console.log('⚠️ Tampoco se encontraron datos en `compra`. Retornando datos simulados');
+                                            datosGraficas = generarDatosSimuladosBackend();
+                                        }
+
+                                        console.log('✅ Datos compilados, enviando respuesta');
+                                        return res.json(datosGraficas);
+                                    });
+                                });
+                            });
+                        });
+
+                        // Salimos de la ejecución principal porque la respuesta se enviará dentro
+                        return;
+                    } else {
+                        console.log('📊 Compilando datos de gráficas...');
+                        datosGraficas = {
+                            productosMasVendidos: {
+                                labels: resultProductos.length > 0 ? resultProductos.map(p => p.nombre) : ['Sin datos'],
+                                datos: resultProductos.length > 0 ? resultProductos.map(p => p.cantidad_vendida) : [0]
+                            },
+                            usuariosTopCompras: {
+                                labels: resultUsuarios.length > 0 ? resultUsuarios.map(u => u.nombre_usuario) : ['Sin datos'],
+                                datos: resultUsuarios.length > 0 ? resultUsuarios.map(u => u.compras_realizadas) : [0]
+                            },
+                            ingresosSemanales: {
+                                labels: resultIngresos.length > 0 
+                                    ? resultIngresos.map(i => {
+                                        const fecha = new Date(i.fecha_dia);
+                                        return fecha.toLocaleDateString('es-ES', { weekday: 'short' });
+                                    })
+                                    : ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sab', 'Dom'],
+                                datos: resultIngresos.length > 0 
+                                    ? resultIngresos.map(i => parseFloat(i.ingresos_dia) || 0)
+                                    : [0, 0, 0, 0, 0, 0, 0]
+                            },
+                            distribucionCategorias: {
+                                labels: resultCategoria.length > 0 ? resultCategoria.map(c => c.categoria) : ['Sin datos'],
+                                datos: resultCategoria.length > 0 ? resultCategoria.map(c => c.cantidad) : [0]
+                            }
+                        };
+                    }
+
+                    console.log('✅ Datos compilados, enviando respuesta');
+                    res.json(datosGraficas);
+                });
+            });
+        });
+    });
+});
+
 // Ruta para verificar el estado de la sesión
 app.get('/checkSession', function(req, res) {
     if (req.session.user) {
@@ -505,10 +811,10 @@ app.get('/getUsuarioActual', function(req, res) {
 
     con.query('SELECT * FROM usuario WHERE id_usuario = ?', [req.session.user.id_usuario], function(err, result) {
         if (err) {
-            return res.status(500).json({ error: 'Error al obtener datos del usuario' });
+            return res.status(500).json({ message: 'Error al obtener datos del usuario' });
         }
         if (result.length === 0) {
-            return res.status(404).json({ error: 'Usuario no encontrado' });
+            return res.status(404).json({ message: 'Usuario no encontrado' });
         }
         
         const usuario = result[0];
@@ -696,7 +1002,7 @@ app.post('/reactivarProducto', function(req, res) {
         if (result.affectedRows === 0) {
             return res.status(404).send("<script>alert('Producto no encontrado.'); history.back();</script>");
         }
-        res.status(200).send("<script>alert('Producto reactivado correctamente.'); location.reload();</script>");
+        res.status(200).json({ message: 'Producto reactivado correctamente.' });
     });
 });
 

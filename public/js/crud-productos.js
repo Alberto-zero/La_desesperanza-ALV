@@ -38,7 +38,7 @@ function actualizarStock(id, nuevoStock) {
     })
     .then(res => res.json())
     .then(data => mostrarMensaje(data.message || data.error, data.error ? 'danger' : 'success'))
-    .catch(() => mostrarMensaje('Error al actualizar stock', 'danger'));
+    .catch(() => mostrarMensaje('Error al actualizar stock ', 'danger'));
 }
 
 function reactivarProducto(id) {
