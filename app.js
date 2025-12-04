@@ -344,22 +344,24 @@ app.post('/updateProducto', upload.single("imagenProducto"), function(req, res) 
 app.get('/getVentas', (req, res) => {
     const query = `
         SELECT 
-            v.id_venta,
-            v.fecha,
-            v.cantidad,
-            v.total,
-            p.id_producto,
-            p.nombre AS nombre_producto,
-            p.precio AS precio_producto,
-            p.descripcion,
-            u.id_usuario,
-            CONCAT(u.nombre, ' ', u.apellido_paterno, ' ', u.apellido_materno) AS nombre_completo,
+            c.id_compra AS folio,
+            c.fecha,
+            
+            CONCAT(u.nombre, ' ', u.apellido_paterno, ' ', u.apellido_materno) AS cliente,
             u.email,
-            u.direccion
-        FROM venta v
-        INNER JOIN usuario u ON v.id_usuario = u.id_usuario
-        INNER JOIN producto p ON v.id_producto = p.id_producto
-        ORDER BY v.fecha DESC;
+
+            cd.nombre_producto AS producto,
+            cd.cantidad,
+            cd.precio_unitario,
+            cd.subtotal AS total
+
+        FROM compra c
+        INNER JOIN usuario u 
+            ON c.id_usuario = u.id_usuario
+        INNER JOIN compra_detalle cd 
+            ON c.id_compra = cd.id_compra
+
+        ORDER BY c.fecha DESC;
     `;
 
     con.query(query, (err, results) => {

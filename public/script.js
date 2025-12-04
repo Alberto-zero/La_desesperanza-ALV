@@ -1,26 +1,5 @@
 // Global fetch wrapper: muestra alert() cuando la respuesta no es OK
-(function() {
-    const _fetch = window.fetch;
-    window.fetch = function(...args) {
-        return _fetch.apply(this, args).then(async res => {
-            if (!res.ok) {
-                let msg = '';
-                try {
-                    const data = await res.clone().json();
-                    msg = data.error || data.message || JSON.stringify(data);
-                } catch (e) {
-                    try {
-                        msg = await res.clone().text();
-                    } catch (e2) {
-                        msg = 'Error en la petición';
-                    }
-                }
-                if (msg) alert(msg);
-            }
-            return res;
-        });
-    };
-})();
+
 
 document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('catalogo')) {
@@ -44,9 +23,33 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-function cargarVentas(){
-    
+
+(function() {
+    const _fetch = window.fetch;
+    window.fetch = function(...args) {
+        return _fetch.apply(this, args).then(async res => {
+            if (!res.ok) {
+                let msg = '';
+                try {
+                    const data = await res.clone().json();
+                    msg = data.error || data.message || JSON.stringify(data);
+                } catch (e) {
+                    try {
+                        msg = await res.clone().text();
+                    } catch (e2) {
+                        msg = 'Error en la petición';
+                    }
+                }
+                if (msg) alert(msg);
+            }
+            return res;
+        });
+    };
+})();
+
+function cargarVentas() {
     console.log("Cargando ventas...");
+
     fetch('/getVentas')
         .then(res => {
             if (!res.ok) throw new Error('Error al obtener ventas');
@@ -59,14 +62,14 @@ function cargarVentas(){
             ventas.forEach((venta, index) => {
                 tbody.innerHTML += `
                     <tr>
-                        <td>${venta.id_venta}</td>
+                        <td>${venta.folio}</td>
                         <td>${new Date(venta.fecha).toLocaleDateString()}</td>
-                        <td>${venta.nombre_completo}</td>
+                        <td>${venta.cliente}</td>
                         <td>${venta.email}</td>
-                        <td>${venta.nombre_producto}</td>
+                        <td>${venta.producto}</td>
                         <td>${venta.cantidad}</td>
-                        <td>$${venta.precio_producto.toFixed(2)}</td>
-                        <td>$${venta.total.toFixed(2)}</td>
+                        <td>$${Number(venta.precio_unitario).toFixed(2)}</td>
+                        <td>$${Number(venta.total).toFixed(2)}</td>
                     </tr>
                 `;
             });
@@ -76,7 +79,6 @@ function cargarVentas(){
             alert('Hubo un problema al cargar las ventas');
         });
 }
-
 function cargarUsuarios() {
     console.log("Cargando Usuarios...");
 
